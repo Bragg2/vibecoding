@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D立体交错拼贴</title>
+    <style>
+        :root { --accent: #6366f1; --bg: #0f172a; }
+        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: #f1f5f9; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        
+        .container { width: 100%; max-width: 500px; padding: 20px; box-sizing: border-box; }
+        h2 { text-align: center; margin-bottom: 8px; background: linear-gradient(to right, #818cf8, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        p { text-align: center; font-size: 13px; color: #94a3b8; margin-bottom: 20px; }
+
+        #preview-container { 
+            width: 100%; background: #1e293b; border-radius: 16px; 
+            overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); position: relative;
+            display: flex; align-items: center; justify-content: center;
+        }
+        canvas { max-width: 100%; max-height: 70vh; height: auto; display: block; }
+
+        .controls { margin-top: 24px; display: grid; gap: 16px; background: #1e293b; padding: 20px; border-radius: 16px; }
+        .control-group { display: flex; flex-direction: column; gap: 8px; }
+        label { font-size: 14px; font-weight: 600; color: #94a3b8; }
+
+        .upload-btn {
+            background: var(--accent); color: white; padding: 14px; border-radius: 10px;
+            text-align: center; font-weight: 600; cursor: pointer; transition: transform 0.2s;
+        }
+        .upload-btn:active { transform: scale(0.98); }
+        input[type="file"] { display: none; }
+        
+        input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+        
+        .filter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .filter-opt { 
+            padding: 8px; border: 1px solid #334155; border-radius: 8px; 
+            text-align: center; font-size: 12px; cursor: pointer; background: #0f172a;
+        }
+        .filter-opt.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+        .save-btn {
+            background: #10b981; color: white; border: none; padding: 14px; border-radius: 10px;
+            font-weight: 600; width: 100%; margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>3D Interlace Art</h2>
+    <p>建议上传宽高比一致的照片效果最佳</p>
+
+    <div id="preview-container">
+        <canvas id="mainCanvas"></canvas>
+    </div>
+
+    <div class="controls">
+        <label class="upload-btn">
+            上传 2-3 张照片
+            <input type="file" id="fileInput" accept="image/*" multiple>
+        </label>
+
+        <div class="control-group">
+            <div style="display:flex; justify-content: space-between;">
+                <label>立体切片密度</label>
+                <span id="stripVal" style="font-size:12px; color:var(--accent)">25</span>
+            </div>
+            <input type="range" id="stripRange" min="8" max="80" value="25">
+        </div>
+
+        <div class="control-group">
+            <label>艺术滤镜</label>
+            <div class="filter-grid" id="filterGrid">
+                <div class="filter-opt active" data-filter="none">原色</div>
+                <div class="filter-opt" data-filter="grayscale(100%) contrast(1.2)">经典黑白</div>
+                <div class="filter-opt" data-filter="sepia(0.6) contrast(1.1) brightness(0.9)">电影胶片</div>
+            </div>
+        </div>
+
+        <button class="save-btn" id="saveBtn">下载作品</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    const fileInput = document.getElementById('fileInput');
+    const stripRange = document.getElementById('stripRange');
+    const stripVal = document.getElementById('stripVal');
+    const filterOpts = document.querySelectorAll('.filter-opt');
+    const saveBtn = document.getElementById('saveBtn');
+
+    let images = [];
+    let currentFilter = 'none';
+
+    // 核心：自适应尺寸处理
+    fileInput.onchange = async (e) => {
+        const files = Array.from(e.target.files).slice(0, 3);
+        if (files.length < 2) return alert("请选择至少2张图");
+
+        images = await Promise.all(files.map(file => {
+            return new Promise(resolve => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.src = URL.createObjectURL(file);
+            });
+        }));
+
+        // 以第一张图为基准设置 Canvas 尺寸
+        const firstImg = images[0];
+        canvas.width = firstImg.width;
+        canvas.height = firstImg.height;
+        
+        render();
+    };
+
+    function render() {
+        if (images.length < 2) return;
+
+        const numStrips = parseInt(stripRange.value);
+        stripVal.innerText = numStrips;
+        
+        const stripWidth = canvas.width / numStrips;
+
+        // 1. 绘制主体图片切片
+        ctx.save();
+        ctx.filter = currentFilter;
+        for (let i = 0; i < numStrips; i++) {
+            const img = images[i % images.length];
+            
+            // 计算裁剪：保持每一张图都拉伸/缩放到基准画布尺寸
+            const sWidth = img.width / numStrips;
+            ctx.drawImage(
+                img, 
+                i * sWidth, 0, sWidth, img.height,
+                i * stripWidth, 0, stripWidth, canvas.height
+            );
+        }
+        ctx.restore();
+
+        // 2. 绘制光影层（叠加在最上面）
+        for (let i = 0; i < numStrips; i++) {
+            const x = i * stripWidth;
+
+            // --- 左侧高光 (白色半透明) ---
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+            ctx.fillRect(x, 0, Math.max(1, stripWidth * 0.05), canvas.height);
+
+            // --- 右侧阴影 (黑色半透明) ---
+            // 使用线性渐变可以让阴影更自然，或者简单的深色条
+            const gradient = ctx.createLinearGradient(x + stripWidth * 0.7, 0, x + stripWidth, 0);
+            gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x + stripWidth * 0.5, 0, stripWidth * 0.5, canvas.height);
+        }
+    }
+
+    stripRange.oninput = render;
+
+    filterOpts.forEach(opt => {
+        opt.onclick = () => {
+            filterOpts.forEach(el => el.classList.remove('active'));
+            opt.classList.add('active');
+            currentFilter = opt.dataset.filter;
+            render();
+        };
+    });
+
+    saveBtn.onclick = () => {
+        if (images.length < 2) return;
+        const link = document.createElement('a');
+        link.download = `art-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png', 0.9);
+        link.click();
+    };
+</script>
+
+</body>
+</html>
