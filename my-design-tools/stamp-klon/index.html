@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>印章采样拼贴工具</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f3ee;color:#2c2c2a;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{height:44px;background:#fff;border-bottom:0.5px solid #d3d1c7;display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
+header h1{font-size:15px;font-weight:500;color:#2c2c2a;letter-spacing:-0.3px}
+.badge{font-size:11px;color:#888780;background:#f1efe8;padding:2px 8px;border-radius:4px}
+.layout{display:flex;flex:1;overflow:hidden}
+.panel{width:220px;background:#fff;border-right:0.5px solid #d3d1c7;padding:16px 14px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;flex-shrink:0}
+.panel-section{display:flex;flex-direction:column;gap:6px}
+.panel-label{font-size:11px;color:#888780;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px}
+select,input[type=file]::file-selector-button{font-family:inherit}
+select{width:100%;padding:7px 10px;border:0.5px solid #d3d1c7;border-radius:8px;font-size:13px;color:#2c2c2a;background:#fff;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888780' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+select:hover{border-color:#b4b2a9}
+.upload-btn{width:100%;padding:8px;border:0.5px dashed #b4b2a9;border-radius:8px;font-size:13px;color:#5f5e5a;background:#fafaf8;cursor:pointer;text-align:center;transition:all 0.15s}
+.upload-btn:hover{border-color:#888780;background:#f1efe8}
+.slider-row{display:flex;align-items:center;gap:8px}
+.slider-row label{font-size:12px;color:#5f5e5a;width:24px;flex-shrink:0}
+.slider-row input[type=range]{flex:1;height:3px;accent-color:#3b6d11;cursor:pointer}
+.slider-row span{font-size:12px;color:#2c2c2a;width:30px;text-align:right;font-variant-numeric:tabular-nums}
+.divider{height:0.5px;background:#f1efe8;margin:4px 0}
+.btn-row{display:flex;gap:6px}
+.btn{flex:1;padding:7px 0;border:0.5px solid #d3d1c7;border-radius:8px;font-size:12px;color:#5f5e5a;background:#fff;cursor:pointer;text-align:center;transition:all 0.15s}
+.btn:hover{background:#f1efe8;border-color:#b4b2a9}
+.btn:active{transform:scale(0.97)}
+.btn.danger{color:#a32d2d;border-color:#f0e0e0}
+.btn.danger:hover{background:#fcebeb}
+.btn.primary{background:#2c2c2a;color:#fff;border-color:#2c2c2a}
+.btn.primary:hover{background:#444441}
+.canvas-area{flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;background:#eae8e2}
+#mainCanvas{cursor:crosshair;display:block;max-width:100%;max-height:100%;image-rendering:pixelated}
+.status-bar{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,0.92);border:0.5px solid #d3d1c7;border-radius:20px;padding:5px 14px;font-size:12px;color:#5f5e5a;pointer-events:none;backdrop-filter:blur(4px);white-space:nowrap}
+.mode-indicator{position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.92);border:0.5px solid #d3d1c7;border-radius:8px;padding:5px 12px;font-size:12px;color:#3b6d11;font-weight:500}
+input[type=file]{display:none}
+.shortcut-hint{font-size:10px;color:#b4b2a9;margin-top:2px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>印章采样拼贴</h1>
+  <span class="badge">Stamp Collage</span>
+</header>
+
+<div class="layout">
+  <div class="panel">
+
+    <div class="panel-section">
+      <div class="panel-label">图片</div>
+      <div class="upload-btn" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+        点击上传图片
+      </div>
+      <input type="file" id="fileInput" accept="image/*">
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="panel-section">
+      <div class="panel-label">印章形状</div>
+      <select id="stampShape">
+        <option value="rect">矩形</option>
+        <option value="circle">圆形</option>
+        <option value="triangle">三角形</option>
+        <option value="heart">爱心</option>
+        <option value="star">星形</option>
+      </select>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-label">印章尺寸</div>
+      <div class="slider-row">
+        <label>宽</label>
+        <input type="range" id="stampW" min="10" max="400" value="80" step="1">
+        <span id="stampWVal">80</span>
+      </div>
+      <div class="slider-row">
+        <label>高</label>
+        <input type="range" id="stampH" min="10" max="400" value="80" step="1">
+        <span id="stampHVal">80</span>
+      </div>
+      <div class="shortcut-hint">滚轮调整大小 · Shift 等比缩放</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="panel-section">
+      <div class="panel-label">采样模式</div>
+      <select id="sampleMode">
+        <option value="drag">拖拽复制</option>
+        <option value="pick">选取复制</option>
+      </select>
+      <div class="shortcut-hint" id="modeHint">长按鼠标左键拖拽复制</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="panel-section">
+      <div class="panel-label">操作</div>
+      <div class="btn-row">
+        <div class="btn" id="btnUndo">↩ 撤销</div>
+        <div class="btn" id="btnRedo">↪ 重做</div>
+      </div>
+      <div class="btn danger" id="btnClear">清空画布</div>
+      <div class="btn primary" id="btnExport">导出图片</div>
+    </div>
+
+  </div>
+
+  <div class="canvas-area" id="canvasArea">
+    <div id="canvasWrap" style="position:relative;display:inline-block;line-height:0">
+      <canvas id="mainCanvas" style="display:block;cursor:crosshair"></canvas>
+      <canvas id="overlayCanvas" style="position:absolute;top:0;left:0;pointer-events:none"></canvas>
+    </div>
+    <div class="status-bar" id="statusBar">请上传图片开始</div>
+    <div class="mode-indicator" id="modeIndicator">拖拽复制</div>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('mainCanvas');
+const ctx = canvas.getContext('2d');
+const oc = document.getElementById('overlayCanvas');  // overlay — visual only, never exported
+const octx = oc.getContext('2d');
+const fileInput = document.getElementById('fileInput');
+const stampShape = document.getElementById('stampShape');
+const sampleMode = document.getElementById('sampleMode');
+const stampWSlider = document.getElementById('stampW');
+const stampHSlider = document.getElementById('stampH');
+const stampWVal = document.getElementById('stampWVal');
+const stampHVal = document.getElementById('stampHVal');
+const statusBar = document.getElementById('statusBar');
+const modeIndicator = document.getElementById('modeIndicator');
+const modeHint = document.getElementById('modeHint');
+const canvasArea = document.getElementById('canvasArea');
+
+// bgCanvas: original image, never modified — always the sampling source
+const bgCanvas = document.createElement('canvas');
+const bgCtx = bgCanvas.getContext('2d');
+
+let sourceImg = null;
+let stampW = 80, stampH = 80;
+let isMouseDown = false;
+let mouseX = 0, mouseY = 0;
+let history = [], historyIndex = -1;
+
+// drag mode
+let dragAnchorX = 0, dragAnchorY = 0;
+let dragPainting = false; // true while mouse is held in drag mode
+
+// pick mode
+let pickState = 'idle';   // 'idle' | 'picked'
+let pickSrcCX = 0, pickSrcCY = 0; // center of pick source
+
+// ── history ──────────────────────────────────────────────────────────────────
+function saveHistory() {
+  const d = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  history = history.slice(0, historyIndex + 1);
+  history.push(d);
+  if (history.length > 60) { history.shift(); }
+  historyIndex = history.length - 1;
+}
+function restoreHistory() {
+  if (historyIndex >= 0) ctx.putImageData(history[historyIndex], 0, 0);
+}
+function undo() { if (historyIndex > 0) { historyIndex--; restoreHistory(); } }
+function redo() { if (historyIndex < history.length-1) { historyIndex++; restoreHistory(); } }
+
+// ── file upload ───────────────────────────────────────────────────────────────
+fileInput.addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      sourceImg = img;
+      const area = canvasArea.getBoundingClientRect();
+      const ratio = Math.min((area.width-20)/img.naturalWidth, (area.height-20)/img.naturalHeight, 1);
+      const W = Math.round(img.naturalWidth*ratio), H = Math.round(img.naturalHeight*ratio);
+      canvas.width = oc.width = bgCanvas.width = W;
+      canvas.height = oc.height = bgCanvas.height = H;
+      bgCtx.drawImage(img, 0, 0, W, H);
+      ctx.drawImage(img, 0, 0, W, H);
+      clearOverlay();
+      saveHistory();
+      statusBar.textContent = `${W} × ${H}`;
+      document.getElementById('uploadArea').textContent = file.name.length>18 ? file.name.slice(0,16)+'…' : file.name;
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+// ── shape path builder (works on any context) ────────────────────────────────
+function buildPath(c, cx, cy, w, h, shape) {
+  const hw = w/2, hh = h/2;
+  c.beginPath();
+  if (shape==='rect') {
+    c.rect(cx-hw, cy-hh, w, h);
+  } else if (shape==='circle') {
+    c.ellipse(cx, cy, hw, hh, 0, 0, Math.PI*2);
+  } else if (shape==='triangle') {
+    c.moveTo(cx, cy-hh); c.lineTo(cx+hw, cy+hh); c.lineTo(cx-hw, cy+hh); c.closePath();
+  } else if (shape==='heart') {
+    const s = Math.min(w,h)*0.5;
+    c.save(); c.translate(cx,cy); c.scale(s/50,s/50);
+    c.moveTo(0,20); c.bezierCurveTo(-50,-10,-50,-50,0,-20); c.bezierCurveTo(50,-50,50,-10,0,20);
+    c.restore();
+  } else if (shape==='star') {
+    const outerR = Math.min(hw,hh), innerR = outerR*0.42;
+    for (let i=0;i<10;i++) {
+      const r = i%2===0 ? outerR : innerR;
+      const a = i*Math.PI/5 - Math.PI/2;
+      i===0 ? c.moveTo(cx+r*Math.cos(a),cy+r*Math.sin(a)) : c.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));
+    }
+    c.closePath();
+  }
+}
+
+// ── overlay helpers ───────────────────────────────────────────────────────────
+function clearOverlay() { octx.clearRect(0, 0, oc.width, oc.height); }
+
+// Hover cursor: dim ONLY inside the stamp shape. Outside: overlay transparent, main canvas at full brightness.
+function overlayDimCutout(cx, cy, w, h, shape) {
+  clearOverlay();
+  // clip to stamp shape, fill with dark tint inside only
+  octx.save();
+  buildPath(octx, cx, cy, w, h, shape);
+  octx.clip();
+  octx.fillStyle = 'rgba(0,0,0,0.42)';
+  octx.fillRect(0, 0, oc.width, oc.height);
+  octx.restore();
+  // red border on top
+  octx.save();
+  buildPath(octx, cx, cy, w, h, shape);
+  octx.strokeStyle = '#e24b4a';
+  octx.lineWidth = 2.5;
+  octx.stroke();
+  octx.restore();
+}
+
+// During drag: show the stamp preview (semi-transparent image) + red border on overlay
+// Main canvas already has painted pixels; overlay sits on top
+function overlayDragActive(cx, cy, w, h, shape) {
+  clearOverlay();
+  // semi-transparent dim inside stamp area so it reads as "active indicator"
+  octx.save();
+  buildPath(octx, cx, cy, w, h, shape);
+  octx.clip();
+  octx.globalAlpha = 0.35;
+  octx.fillStyle = 'rgba(255,255,255,0.5)';
+  octx.fillRect(cx-w/2, cy-h/2, w, h);
+  octx.restore();
+  // red border
+  octx.save();
+  buildPath(octx, cx, cy, w, h, shape);
+  octx.strokeStyle = '#e24b4a';
+  octx.lineWidth = 2.5;
+  octx.stroke();
+  octx.restore();
+}
+
+// Pick mode: preview of the sample following the cursor (semi-transparent) + red border
+function overlayPickPreview(cx, cy, srcCX, srcCY, w, h, shape) {
+  clearOverlay();
+  // dim the whole overlay lightly
+  octx.fillStyle = 'rgba(0,0,0,0.22)';
+  octx.fillRect(0, 0, oc.width, oc.height);
+  // sample preview clipped to shape (semi-transparent)
+  octx.save();
+  buildPath(octx, cx, cy, w, h, shape);
+  octx.clip();
+  octx.globalAlpha = 0.65;
+  const dx = cx - srcCX, dy = cy - srcCY;
+  octx.drawImage(bgCanvas, 0, 0, oc.width, oc.height, dx, dy, oc.width, oc.height);
+  octx.restore();
+  // red border
+  octx.save();
+  buildPath(octx, cx, cy, w, h, shape);
+  octx.strokeStyle = '#e24b4a';
+  octx.lineWidth = 2.5;
+  octx.stroke();
+  octx.restore();
+}
+
+// ── stamp to main canvas (no border, no overlay change) ──────────────────────
+function stampToMain(dstCX, dstCY, srcCX, srcCY, w, h, shape) {
+  ctx.save();
+  buildPath(ctx, dstCX, dstCY, w, h, shape);
+  ctx.clip();
+  const dx = dstCX - srcCX, dy = dstCY - srcCY;
+  ctx.drawImage(bgCanvas, 0, 0, canvas.width, canvas.height, dx, dy, canvas.width, canvas.height);
+  ctx.restore();
+}
+
+// ── canvas coordinate helper ─────────────────────────────────────────────────
+function getPos(e) {
+  const r = canvas.getBoundingClientRect();
+  return { x:(e.clientX-r.left)*(canvas.width/r.width), y:(e.clientY-r.top)*(canvas.height/r.height) };
+}
+
+// ── mouse events ──────────────────────────────────────────────────────────────
+canvas.addEventListener('mousedown', e => {
+  if (e.button!==0 || !sourceImg) return;
+  isMouseDown = true;
+  const pos = getPos(e);
+  mouseX=pos.x; mouseY=pos.y;
+  const mode = sampleMode.value;
+
+  if (mode==='drag') {
+    // Record anchor = source region to stamp from
+    dragAnchorX = pos.x; dragAnchorY = pos.y;
+    dragPainting = true;
+    saveHistory();
+    stampToMain(pos.x, pos.y, pos.x, pos.y, stampW, stampH, stampShape.value);
+    overlayDragActive(pos.x, pos.y, stampW, stampH, stampShape.value);
+  } else {
+    if (pickState==='idle') {
+      // First click: lock in the source
+      pickSrcCX = pos.x; pickSrcCY = pos.y;
+      pickState = 'picked';
+      statusBar.textContent = '已采样 · 移动预览 · 点击放置';
+      // Show preview at pick point immediately
+      overlayPickPreview(pos.x, pos.y, pickSrcCX, pickSrcCY, stampW, stampH, stampShape.value);
+    } else if (pickState==='picked' || pickState==='placed') {
+      // Every click after sampling: place the stamp, switch to 'placed' hover mode
+      saveHistory();
+      stampToMain(pos.x, pos.y, pickSrcCX, pickSrcCY, stampW, stampH, stampShape.value);
+      pickState = 'placed';
+      statusBar.textContent = '已放置 · 继续点击放置 · A 重新选区';
+      overlayDimCutout(pos.x, pos.y, stampW, stampH, stampShape.value);
+    }
+  }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (!sourceImg) return;
+  const pos = getPos(e);
+  mouseX=pos.x; mouseY=pos.y;
+  const mode = sampleMode.value;
+
+  if (mode==='drag') {
+    if (isMouseDown && dragPainting) {
+      stampToMain(pos.x, pos.y, dragAnchorX, dragAnchorY, stampW, stampH, stampShape.value);
+      overlayDragActive(pos.x, pos.y, stampW, stampH, stampShape.value);
+    } else {
+      overlayDimCutout(pos.x, pos.y, stampW, stampH, stampShape.value);
+    }
+  } else {
+    if (pickState==='idle' || pickState==='placed') {
+      overlayDimCutout(pos.x, pos.y, stampW, stampH, stampShape.value);
+    } else {
+      overlayPickPreview(pos.x, pos.y, pickSrcCX, pickSrcCY, stampW, stampH, stampShape.value);
+    }
+  }
+});
+
+canvas.addEventListener('mouseup', () => {
+  if (dragPainting) {
+    saveHistory(); // commit painted strokes to history
+    dragPainting = false;
+    // Switch back to hover cursor view
+    overlayDimCutout(mouseX, mouseY, stampW, stampH, stampShape.value);
+  }
+  isMouseDown = false;
+});
+
+canvas.addEventListener('mouseleave', () => {
+  isMouseDown = false;
+  dragPainting = false;
+  clearOverlay();
+});
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault(); if (!sourceImg) return;
+  const delta = e.deltaY<0 ? 5 : -5;
+  if (e.shiftKey) { const s=Math.max(10,Math.min(400,stampW+delta)); stampW=s; stampH=s; }
+  else stampW = Math.max(10,Math.min(400,stampW+delta));
+  stampWSlider.value=stampW; stampHSlider.value=stampH;
+  stampWVal.textContent=stampW; stampHVal.textContent=stampH;
+  refreshCursor();
+}, {passive:false});
+
+canvas.addEventListener('contextmenu', e=>e.preventDefault());
+
+function refreshCursor() {
+  const mode = sampleMode.value;
+  if (mode==='drag') {
+    overlayDimCutout(mouseX, mouseY, stampW, stampH, stampShape.value);
+  } else if (pickState==='idle' || pickState==='placed') {
+    overlayDimCutout(mouseX, mouseY, stampW, stampH, stampShape.value);
+  } else {
+    overlayPickPreview(mouseX, mouseY, pickSrcCX, pickSrcCY, stampW, stampH, stampShape.value);
+  }
+}
+
+// ── keyboard ──────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if ((e.key==='a'||e.key==='A') && sampleMode.value==='pick') {
+    pickState='idle'; clearOverlay();
+    if (sourceImg) overlayDimCutout(mouseX,mouseY,stampW,stampH,stampShape.value);
+    statusBar.textContent='已清除 · 点击重新选区';
+  }
+  if ((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key==='z'){e.preventDefault();undo();}
+  if ((e.ctrlKey||e.metaKey)&&((e.shiftKey&&e.key==='z')||e.key==='y')){e.preventDefault();redo();}
+});
+
+// ── sliders ───────────────────────────────────────────────────────────────────
+stampWSlider.addEventListener('input',()=>{stampW=+stampWSlider.value;stampWVal.textContent=stampW;});
+stampHSlider.addEventListener('input',()=>{stampH=+stampHSlider.value;stampHVal.textContent=stampH;});
+stampShape.addEventListener('change',()=>{ if(sourceImg) refreshCursor(); });
+
+sampleMode.addEventListener('change',()=>{
+  pickState='idle'; dragPainting=false; clearOverlay();
+  const m=sampleMode.value;
+  modeIndicator.textContent = m==='drag'?'拖拽复制':'选取复制';
+  modeHint.textContent = m==='drag'?'长按拖拽·采样锁定于按下点':'单击采样·再次点击放置·A清除';
+  if (sourceImg) overlayDimCutout(mouseX,mouseY,stampW,stampH,stampShape.value);
+});
+
+// ── buttons ───────────────────────────────────────────────────────────────────
+document.getElementById('btnUndo').addEventListener('click',undo);
+document.getElementById('btnRedo').addEventListener('click',redo);
+
+document.getElementById('btnClear').addEventListener('click',()=>{
+  if (!sourceImg) return;
+  ctx.drawImage(bgCanvas,0,0); saveHistory();
+  pickState='idle'; dragPainting=false;
+  clearOverlay();
+  statusBar.textContent='已清空画布';
+});
+
+document.getElementById('btnExport').addEventListener('click',()=>{
+  if (!sourceImg) return;
+  // Export mainCanvas only — overlay is a separate element, not included
+  const link=document.createElement('a');
+  link.download='stamp-collage.png';
+  link.href=canvas.toDataURL('image/png');
+  link.click();
+});
+</script>
+</body>
+</html>

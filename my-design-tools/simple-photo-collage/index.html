@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>PHOTO COLLAGE ART</title>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --sidebar-bg: #0a0a0a;
+            --text-color: #ffffff;
+            --accent-color: #ffffff;
+            --border-color: #222222;
+            --font-main: "PingFang SC", "Heiti SC", "Microsoft YaHei", sans-serif;
+            --font-mono: "IBM Plex Mono", Consolas, monospace;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 左侧侧边栏 */
+        #sidebar {
+            width: 320px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 30px 25px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        /* 1. 字体放大与样式 */
+        .header-title {
+            font-family: var(--font-mono);
+            font-size: 26px;
+            font-weight: 900;
+            margin-bottom: 40px;
+            letter-spacing: -1px;
+            line-height: 1.1;
+            text-transform: uppercase;
+        }
+
+        .menu-section { margin-bottom: 30px; }
+        .menu-label {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 15px;
+            display: block;
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .control-item { margin-bottom: 20px; }
+        .label-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        /* 纯黑风格滑块 */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 2px;
+            background: #333;
+            outline: none;
+            margin: 10px 0;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px;
+            height: 10px;
+            background: #fff;
+            cursor: pointer;
+            border-radius: 0; /* 方块感 */
+        }
+
+        /* 3. 单个上传区域 */
+        .upload-area {
+            border: 1px solid #333;
+            padding: 25px 15px;
+            text-align: center;
+            background: #000;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover { border-color: #fff; }
+        .upload-tip { font-size: 11px; color: #555; margin-top: 10px; }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            margin-bottom: 10px;
+            font-size: 12px;
+            color: #ccc;
+        }
+        .checkbox-group input { margin-right: 10px; accent-color: #fff; }
+
+        /* 右侧预览 */
+        #preview-container {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            background-image: radial-gradient(#151515 1px, transparent 1px);
+            background-size: 25px 25px;
+            overflow: hidden;
+        }
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+            background: #000;
+            box-shadow: 0 0 60px rgba(0,0,0,0.8);
+        }
+
+        .export-btn {
+            background: #fff;
+            color: #000;
+            border: none;
+            padding: 15px;
+            margin-top: auto;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .export-btn:hover { background: #ccc; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <div class="header-title">PHOTO<br>COLLAGE ART</div>
+    
+    <div class="menu-section">
+        <span class="menu-label">/ 媒体上传</span>
+        <div class="upload-area" onclick="document.getElementById('imgInput').click()">
+            <div style="font-size: 13px; font-weight: bold;">上传 2 张照片</div>
+            <div class="upload-tip">请在文件夹中同时选中两张图</div>
+            <input type="file" id="imgInput" accept="image/*" multiple style="display:none">
+        </div>
+    </div>
+
+    <div class="menu-section">
+        <span class="menu-label">/ 裁切密度</span>
+        <div class="control-item">
+            <div class="label-row"><span>纵向分条</span><span id="val-cols">12</span></div>
+            <input type="range" id="cols" min="1" max="50" value="12">
+        </div>
+        <div class="control-item">
+            <div class="label-row"><span>横向分条</span><span id="val-rows">12</span></div>
+            <input type="range" id="rows" min="1" max="50" value="12">
+        </div>
+    </div>
+
+    <div class="menu-section">
+        <span class="menu-label">/ 细节渲染</span>
+        <label class="checkbox-group">
+            <input type="checkbox" id="enableDepth" checked> 开启编织层叠阴影
+        </label>
+    </div>
+
+    <div class="menu-section">
+        <span class="menu-label">/ 艺术滤镜</span>
+        <div class="control-item">
+            <div class="label-row"><span>经典黑白强度</span><span id="val-bw">0</span></div>
+            <input type="range" id="bwStrength" min="0" max="100" value="0">
+        </div>
+        <div class="control-item">
+            <div class="label-row"><span>半调网点 (Halftone)</span><span id="val-ht">0</span></div>
+            <input type="range" id="htStrength" min="0" max="100" value="0">
+        </div>
+        <div class="control-item">
+            <div class="label-row"><span>低像素模糊 (Lo-Fi)</span><span id="val-px">0</span></div>
+            <input type="range" id="pxStrength" min="0" max="100" value="0">
+        </div>
+    </div>
+
+    <button class="export-btn" id="downloadBtn">保存拼贴作品</button>
+</div>
+
+<div id="preview-container">
+    <canvas id="mainCanvas"></canvas>
+</div>
+
+<script>
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    const imgInput = document.getElementById('imgInput');
+    const colsInput = document.getElementById('cols');
+    const rowsInput = document.getElementById('rows');
+    const enableDepth = document.getElementById('enableDepth');
+    const bwInput = document.getElementById('bwStrength');
+    const htInput = document.getElementById('htStrength');
+    const pxInput = document.getElementById('pxStrength');
+    const downloadBtn = document.getElementById('downloadBtn');
+
+    let imgA = new Image();
+    let imgB = new Image();
+    let ready = false;
+
+    imgInput.onchange = (e) => {
+        const files = e.target.files;
+        if (files.length !== 2) {
+            alert("请确保同时选中 2 张图片！");
+            return;
+        }
+
+        let loadedCount = 0;
+        const loadImg = (file, target) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                target.onload = () => {
+                    loadedCount++;
+                    if (loadedCount === 2) { ready = true; render(); }
+                };
+                target.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        loadImg(files[0], imgA);
+        loadImg(files[1], imgB);
+    };
+
+    [colsInput, rowsInput, enableDepth, bwInput, htInput, pxInput].forEach(el => {
+        el.oninput = () => {
+            document.getElementById('val-cols').innerText = colsInput.value;
+            document.getElementById('val-rows').innerText = rowsInput.value;
+            document.getElementById('val-bw').innerText = bwInput.value + '%';
+            document.getElementById('val-ht').innerText = htInput.value + '%';
+            document.getElementById('val-px').innerText = pxInput.value + '%';
+            render();
+        };
+    });
+
+    function render() {
+        if (!ready) return;
+
+        const W = 1000;
+        canvas.width = W;
+        canvas.height = W * (imgA.height / imgA.width);
+
+        const cols = parseInt(colsInput.value);
+        const rows = parseInt(rowsInput.value);
+        const cellW = canvas.width / cols;
+        const cellH = canvas.height / rows;
+
+        // 清除背景
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 第一步：拼贴与深度渲染
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const isA = (r + c) % 2 === 0;
+                const src = isA ? imgA : imgB;
+                const sx = c * (src.width / cols);
+                const sy = r * (src.height / rows);
+                const sw = src.width / cols;
+                const sh = src.height / rows;
+                const dx = c * cellW;
+                const dy = r * cellH;
+
+                ctx.drawImage(src, sx, sy, sw, sh, dx, dy, cellW + 0.5, cellH + 0.5);
+
+                if (enableDepth.checked) {
+                    if (isA) {
+                        ctx.fillStyle = "rgba(0,0,0,0.5)";
+                        ctx.fillRect(dx + cellW - 1.5, dy, 2, cellH); 
+                        ctx.fillRect(dx, dy + cellH - 1.5, cellW, 2); 
+                        ctx.fillStyle = "rgba(255,255,255,0.15)";
+                        ctx.fillRect(dx, dy, 1, cellH); 
+                    } else {
+                        ctx.fillStyle = "rgba(0,0,0,0.15)";
+                        ctx.fillRect(dx, dy, cellW, cellH);
+                    }
+                }
+            }
+        }
+
+        // 第二步：滤镜叠加逻辑
+        applyCombinedFilters();
+    }
+
+    function applyCombinedFilters() {
+        const bwS = parseInt(bwInput.value) / 100;
+        const htS = parseInt(htInput.value) / 100;
+        const pxS = parseInt(pxInput.value) / 100;
+
+        // 1. 处理低像素高斯模糊 (Lo-Fi)
+        if (pxS > 0) {
+            const tempCanvas = document.createElement('canvas');
+            const tCtx = tempCanvas.getContext('2d');
+            // 通过缩小再放大实现像素化
+            const scale = 1 - (pxS * 0.95); // 0.05到1倍
+            tempCanvas.width = canvas.width * scale;
+            tempCanvas.height = canvas.height * scale;
+            
+            tCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // 模糊效果
+            ctx.filter = `blur(${pxS * 10}px)`; 
+            ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, canvas.width, canvas.height);
+            ctx.filter = "none";
+        }
+
+        let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        let data = imageData.data;
+
+        // 2. 处理半调网点
+        if (htS > 0) {
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(0,0,canvas.width, canvas.height);
+            const step = Math.floor(5 + (1 - htS) * 12);
+            for (let y = 0; y < canvas.height; y += step) {
+                for (let x = 0; x < canvas.width; x += step) {
+                    const i = (y * canvas.width + x) * 4;
+                    const gray = (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114) / 255;
+                    const radius = (step / 2) * (1 - gray) * 1.3;
+                    ctx.fillStyle = "#000";
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            data = imageData.data;
+        }
+
+        // 3. 处理经典黑白混合
+        if (bwS > 0) {
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i], g = data[i+1], b = data[i+2];
+                let gray = (r * 0.299 + g * 0.587 + b * 0.114);
+                // 增强对比度产生褪色老照片感
+                gray = (gray - 128) * 1.3 + 128; 
+                data[i] = r * (1 - bwS) + gray * bwS;
+                data[i+1] = g * (1 - bwS) + gray * bwS;
+                data[i+2] = b * (1 - bwS) + gray * bwS;
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+    }
+
+    downloadBtn.onclick = () => {
+        const link = document.createElement('a');
+        link.download = 'woven_art_black.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    };
+</script>
+
+</body>
+</html>
