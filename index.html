@@ -1,16 +1,73 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的设计工具合集</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Design Tool Collection</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #0e100f; color: white; padding: 60px 32px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+    .container { width: 100%; max-width: 1200px; }
+    .hero { margin-bottom: 48px; }
+    .hero h1 { font-size: clamp(2.6rem, 5.5vw, 4rem); font-weight: 700; line-height: 1.05; margin-bottom: 20px; }
+    .hero h1 span { color: rgba(255,255,255,0.28); font-weight: 300; }
+    .hero p { color: rgba(255,255,255,0.38); font-size: 15px; white-space: nowrap; }
+    .grid { display: flex; gap: 20px; width: 100%; max-width: 1200px; }
+    .card { background: #141714; border-radius: 12px; overflow: hidden; flex: 1; min-width: 0; transition: transform 0.3s, box-shadow 0.3s; }
+    .card:hover { transform: translateY(-10px); box-shadow: 0 24px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,101,32,0.35); }
+    .card img { width: 100%; height: 220px; object-fit: cover; }
+    .card-body { padding: 16px 20px 20px; }
+    .tags { display: flex; gap: 6px; margin-bottom: 12px; }
+    .tag { padding: 2px 8px; border-radius: 4px; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); font-size: 11px; text-transform: uppercase; }
+    .card-title { color: white; font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+    .card-desc { color: rgba(255,255,255,0.38); font-size: 13px; line-height: 1.6; margin-bottom: 16px; }
+    .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 16px 0; }
+    .footer { display: flex; justify-content: space-between; align-items: center; color: rgba(255,255,255,0.28); font-size: 12px; }
+    a { text-decoration: none; color: inherit; }
+  </style>
 </head>
+
 <body>
-    <h1>我的设计工具</h1>
-    <ul>
-        <li><a href="/crossword-style/">crossword-style</a></li>
-        <li><a href="/simple-photo-collage/">simple-photo-collage</a></li>
-        <li><a href="/stamp-klon/">stamp-klon</a></li>
-    </ul>
+  <div class="container">
+    <div class="hero">
+      <h1>Design Tool<br><span>Collection</span></h1>
+      <p>三个以图像为媒介的视觉创作实验工具，探索拼贴、解构与重组的无限可能。</p>
+    </div>
+  </div>
+
+  <div class="grid">
+    <a class="card" href="/simple-photo-collage/">
+      <img src="https://images.unsplash.com/photo-1749364272905-f8cb4f0d0d4f">
+      <div class="card-body">
+        <div class="tags"><span class="tag">Collage</span><span class="tag">Weave</span><span class="tag">Image</span></div>
+        <div class="card-title">Simple Collage Art</div>
+        <div class="card-desc">对照片进行竖切、横切、编织三种处理方式，打破图像原有秩序，实现视觉重构。</div>
+        <div class="divider"></div>
+        <div class="footer">Photo Collage</div>
+      </div>
+    </a>
+
+    <a class="card" href="/stamp-klon/">
+      <img src="https://images.unsplash.com/photo-1592928180283-00a577d72d08">
+      <div class="card-body">
+        <div class="tags"><span class="tag">Deconstruct</span><span class="tag">Clone</span><span class="tag">Stamp</span></div>
+        <div class="card-title">Stamp Klon</div>
+        <div class="card-desc">基于解构主义的实验性创意采样工具，通过克隆与错位对图像进行视觉拼贴。</div>
+        <div class="divider"></div>
+        <div class="footer">Deconstruct & Clone</div>
+      </div>
+    </a>
+
+    <a class="card" href="/crossword-style/">
+      <img src="https://images.unsplash.com/photo-1769436343255-1b6027c2bae0">
+      <div class="card-body">
+        <div class="tags"><span class="tag">Grid</span><span class="tag">Crossword</span><span class="tag">Remix</span></div>
+        <div class="card-title">Crossword Collage</div>
+        <div class="card-desc">灵感来源于填字游戏，将图像切割重组为交叉网格结构，构建新的视觉叙事。</div>
+        <div class="divider"></div>
+        <div class="footer">Grid Remix</div>
+      </div>
+    </a>
+  </div>
 </body>
 </html>
