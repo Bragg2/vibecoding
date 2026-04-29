@@ -8,7 +8,6 @@
             --bg-color: #000000;
             --sidebar-bg: #0a0a0a;
             --text-color: #ffffff;
-            --accent-color: #ffffff;
             --border-color: #222222;
             --font-main: "PingFang SC", "Heiti SC", "Microsoft YaHei", sans-serif;
             --font-mono: "IBM Plex Mono", Consolas, monospace;
@@ -25,7 +24,6 @@
             overflow: hidden;
         }
 
-        /* 左侧侧边栏 */
         #sidebar {
             width: 320px;
             background: var(--sidebar-bg);
@@ -37,7 +35,6 @@
             flex-shrink: 0;
         }
 
-        /* 1. 字体放大与样式 */
         .header-title {
             font-family: var(--font-mono);
             font-size: 26px;
@@ -68,7 +65,6 @@
             color: #aaa;
         }
 
-        /* 纯黑风格滑块 */
         input[type="range"] {
             -webkit-appearance: none;
             width: 100%;
@@ -79,24 +75,83 @@
         }
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 10px;
-            height: 10px;
+            width: 10px; height: 10px;
             background: #fff;
             cursor: pointer;
-            border-radius: 0; /* 方块感 */
+            border-radius: 0;
         }
 
-        /* 3. 单个上传区域 */
+        .mode-tabs {
+            display: flex;
+            margin-bottom: 18px;
+            border: 1px solid #333;
+        }
+        .mode-tab {
+            flex: 1;
+            padding: 9px 6px;
+            font-size: 10px;
+            font-family: var(--font-mono);
+            letter-spacing: 1px;
+            text-align: center;
+            cursor: pointer;
+            background: #000;
+            color: #555;
+            border: none;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+        .mode-tab.active { background: #fff; color: #000; font-weight: bold; }
+        .mode-tab:not(.active):hover { color: #ccc; }
+
         .upload-area {
             border: 1px solid #333;
             padding: 25px 15px;
             text-align: center;
             background: #000;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: border-color 0.3s;
+            margin-bottom: 10px;
         }
         .upload-area:hover { border-color: #fff; }
+        .upload-area.loaded { border-color: #666; }
         .upload-tip { font-size: 11px; color: #555; margin-top: 10px; }
+
+        #mode-single { display: none; }
+
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .color-label { font-size: 12px; color: #aaa; }
+        input[type="color"] {
+            -webkit-appearance: none;
+            width: 40px; height: 24px;
+            border: 1px solid #444;
+            padding: 2px;
+            background: #000;
+            cursor: pointer;
+            border-radius: 0;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; }
+
+        .thumb-row { display: flex; gap: 8px; margin-top: 10px; }
+        .thumb-box {
+            flex: 1; height: 50px;
+            border: 1px solid #333;
+            overflow: hidden;
+            position: relative;
+        }
+        .thumb-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .thumb-box .thumb-label {
+            position: absolute; bottom: 2px; left: 4px;
+            font-size: 9px; color: #fff;
+            font-family: var(--font-mono);
+            text-shadow: 0 0 4px #000;
+        }
+        .thumb-box.color-thumb { display: flex; align-items: center; justify-content: center; }
 
         .checkbox-group {
             display: flex;
@@ -108,7 +163,18 @@
         }
         .checkbox-group input { margin-right: 10px; accent-color: #fff; }
 
-        /* 右侧预览 */
+        #swap-hint {
+            display: none;
+            background: #0d0d0d;
+            border: 1px solid #2a2a2a;
+            padding: 10px 12px;
+            font-size: 11px;
+            color: #666;
+            line-height: 1.7;
+            margin-top: 4px;
+        }
+        #swap-hint b { color: #999; }
+
         #preview-container {
             flex-grow: 1;
             display: flex;
@@ -118,12 +184,26 @@
             background-image: radial-gradient(#151515 1px, transparent 1px);
             background-size: 25px 25px;
             overflow: hidden;
+            position: relative;
         }
-        canvas {
+
+        #mainCanvas {
             max-width: 100%;
             max-height: 100%;
             background: #000;
             box-shadow: 0 0 60px rgba(0,0,0,0.8);
+            display: block;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* SVG overlay — pointer-events:none 完全不拦截点击 */
+        #swap-overlay-svg {
+            position: absolute;
+            pointer-events: none;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 2;
         }
 
         .export-btn {
@@ -137,6 +217,7 @@
             font-size: 12px;
             letter-spacing: 2px;
             text-transform: uppercase;
+            width: 100%;
         }
         .export-btn:hover { background: #ccc; }
     </style>
@@ -145,13 +226,44 @@
 
 <div id="sidebar">
     <div class="header-title">PHOTO<br>COLLAGE ART</div>
-    
+
     <div class="menu-section">
         <span class="menu-label">/ 媒体上传</span>
-        <div class="upload-area" onclick="document.getElementById('imgInput').click()">
-            <div style="font-size: 13px; font-weight: bold;">上传 2 张照片</div>
-            <div class="upload-tip">请在文件夹中同时选中两张图</div>
-            <input type="file" id="imgInput" accept="image/*" multiple style="display:none">
+
+        <div class="mode-tabs">
+            <button class="mode-tab active" id="tab-double" onclick="switchMode('double')">双图模式</button>
+            <button class="mode-tab" id="tab-single" onclick="switchMode('single')">单图+底色</button>
+        </div>
+
+        <!-- 双图模式 -->
+        <div id="mode-double">
+            <div class="upload-area" id="upload-double" onclick="document.getElementById('imgInputDouble').click()">
+                <div style="font-size:13px;font-weight:bold;">上传 2 张照片</div>
+                <div class="upload-tip">请在文件夹中同时选中两张图</div>
+                <input type="file" id="imgInputDouble" accept="image/*" multiple style="display:none">
+            </div>
+            <div class="thumb-row" id="thumb-double" style="display:none">
+                <div class="thumb-box" id="thumb-a"><span class="thumb-label">A</span></div>
+                <div class="thumb-box" id="thumb-b"><span class="thumb-label">B</span></div>
+            </div>
+        </div>
+
+        <!-- 单图+底色模式 -->
+        <div id="mode-single">
+            <div class="upload-area" id="upload-single" onclick="document.getElementById('imgInputSingle').click()">
+                <div style="font-size:13px;font-weight:bold;">上传 1 张照片</div>
+                <div class="upload-tip">另一张将以纯色底图替代</div>
+                <input type="file" id="imgInputSingle" accept="image/*" style="display:none">
+            </div>
+            <div class="color-row">
+                <span class="color-label">底图颜色</span>
+                <input type="color" id="bgColor" value="#ffffff">
+                <span style="font-size:11px;color:#555;font-family:var(--font-mono);" id="bgColorHex">#ffffff</span>
+            </div>
+            <div class="thumb-row" id="thumb-single" style="display:none">
+                <div class="thumb-box" id="thumb-single-img"><span class="thumb-label">照片</span></div>
+                <div class="thumb-box color-thumb" id="thumb-single-color"><span class="thumb-label">底色</span></div>
+            </div>
         </div>
     </div>
 
@@ -168,9 +280,21 @@
     </div>
 
     <div class="menu-section">
+        <span class="menu-label">/ 交换模式</span>
+        <label class="checkbox-group">
+            <input type="checkbox" id="enableSwap"> 开启格子交换
+        </label>
+        <div id="swap-hint">
+            点击<b>第一个格子</b>选中（橙色高亮），<br>
+            再点击另一个格子完成<b>位置交换</b>。<br>
+            再次点击已选格子可<b>取消选中</b>。
+        </div>
+    </div>
+
+    <div class="menu-section">
         <span class="menu-label">/ 细节渲染</span>
         <label class="checkbox-group">
-            <input type="checkbox" id="enableDepth" checked> 开启编织层叠阴影
+            <input type="checkbox" id="enableDepth" checked> 开启拼接缝隙阴影
         </label>
     </div>
 
@@ -195,144 +319,379 @@
 
 <div id="preview-container">
     <canvas id="mainCanvas"></canvas>
+    <!-- pointer-events:none，不会拦截任何 canvas 点击 -->
+    <svg id="swap-overlay-svg" xmlns="http://www.w3.org/2000/svg"></svg>
 </div>
 
 <script>
-    const canvas = document.getElementById('mainCanvas');
-    const ctx = canvas.getContext('2d');
-    const imgInput = document.getElementById('imgInput');
-    const colsInput = document.getElementById('cols');
-    const rowsInput = document.getElementById('rows');
+    const canvas      = document.getElementById('mainCanvas');
+    const ctx         = canvas.getContext('2d');
+    const overlaySvg  = document.getElementById('swap-overlay-svg');
+
+    const colsInput   = document.getElementById('cols');
+    const rowsInput   = document.getElementById('rows');
     const enableDepth = document.getElementById('enableDepth');
-    const bwInput = document.getElementById('bwStrength');
-    const htInput = document.getElementById('htStrength');
-    const pxInput = document.getElementById('pxStrength');
+    const enableSwap  = document.getElementById('enableSwap');
+    const bwInput     = document.getElementById('bwStrength');
+    const htInput     = document.getElementById('htStrength');
+    const pxInput     = document.getElementById('pxStrength');
     const downloadBtn = document.getElementById('downloadBtn');
+    const bgColorInput= document.getElementById('bgColor');
+    const bgColorHex  = document.getElementById('bgColorHex');
 
-    let imgA = new Image();
-    let imgB = new Image();
-    let ready = false;
+    // 固定 Image 对象，避免引用丢失
+    const imgA = new Image();
+    const imgB = new Image();
+    let imgALoaded = false;
+    let imgBLoaded = false;
 
-    imgInput.onchange = (e) => {
-        const files = e.target.files;
-        if (files.length !== 2) {
-            alert("请确保同时选中 2 张图片！");
-            return;
-        }
+    let currentMode  = 'double';
+    let cellStates   = [];
+    let swapSelected = null;
 
-        let loadedCount = 0;
-        const loadImg = (file, target) => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                target.onload = () => {
-                    loadedCount++;
-                    if (loadedCount === 2) { ready = true; render(); }
-                };
-                target.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        };
+    function isReady() { return imgALoaded && imgBLoaded; }
 
-        loadImg(files[0], imgA);
-        loadImg(files[1], imgB);
+    // ── 模式切换 ──────────────────────────────────────────
+    window.switchMode = function(mode) {
+        currentMode = mode;
+        document.getElementById('mode-double').style.display = mode === 'double' ? 'block' : 'none';
+        document.getElementById('mode-single').style.display = mode === 'single' ? 'block' : 'none';
+        document.getElementById('tab-double').classList.toggle('active', mode === 'double');
+        document.getElementById('tab-single').classList.toggle('active', mode === 'single');
+        imgALoaded = imgBLoaded = false;
+        swapSelected = null;
+        clearCellStates();
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        clearOverlay();
     };
 
-    [colsInput, rowsInput, enableDepth, bwInput, htInput, pxInput].forEach(el => {
-        el.oninput = () => {
+    // ── 双图上传 ──────────────────────────────────────────
+    document.getElementById('imgInputDouble').onchange = function(e) {
+        const files = e.target.files;
+        if (files.length !== 2) { alert('请确保同时选中 2 张图片！'); return; }
+        imgALoaded = imgBLoaded = false;
+
+        function loadOne(file, imgObj, thumbId, flagSetter) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                imgObj.onload = function() {
+                    setThumbSrc(thumbId, ev.target.result);
+                    flagSetter(true);
+                    if (isReady()) onBothLoaded();
+                };
+                imgObj.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        loadOne(files[0], imgA, 'thumb-a', function(v){ imgALoaded = v; });
+        loadOne(files[1], imgB, 'thumb-b', function(v){ imgBLoaded = v; });
+
+        document.getElementById('thumb-double').style.display = 'flex';
+        document.getElementById('upload-double').classList.add('loaded');
+    };
+
+    // ── 单图上传 ──────────────────────────────────────────
+    document.getElementById('imgInputSingle').onchange = function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        imgALoaded = imgBLoaded = false;
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            imgA.onload = function() {
+                imgALoaded = true;
+                setThumbSrc('thumb-single-img', ev.target.result);
+                buildColorImageB(function() {
+                    imgBLoaded = true;
+                    onBothLoaded();
+                });
+            };
+            imgA.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+        document.getElementById('thumb-single').style.display = 'flex';
+        document.getElementById('upload-single').classList.add('loaded');
+    };
+
+    bgColorInput.oninput = function() {
+        bgColorHex.textContent = bgColorInput.value;
+        updateColorThumb();
+        if (currentMode === 'single' && imgALoaded) {
+            imgBLoaded = false;
+            buildColorImageB(function() {
+                imgBLoaded = true;
+                render();
+            });
+        }
+    };
+
+    function updateColorThumb() {
+        document.getElementById('thumb-single-color').style.background = bgColorInput.value;
+    }
+    updateColorThumb();
+
+    function buildColorImageB(cb) {
+        const w = imgA.naturalWidth  || 800;
+        const h = imgA.naturalHeight || 800;
+        const tmp  = document.createElement('canvas');
+        tmp.width  = w; tmp.height = h;
+        const tCtx = tmp.getContext('2d');
+        tCtx.fillStyle = bgColorInput.value;
+        tCtx.fillRect(0, 0, w, h);
+        imgB.onload = function() { if (cb) cb(); };
+        imgB.src = tmp.toDataURL();
+    }
+
+    function setThumbSrc(id, src) {
+        const box = document.getElementById(id);
+        let img = box.querySelector('img');
+        if (!img) { img = document.createElement('img'); box.appendChild(img); }
+        img.src = src;
+    }
+
+    function onBothLoaded() {
+        clearCellStates();
+        swapSelected = null;
+        clearOverlay();
+        render();
+    }
+
+    // ── 控件监听 ──────────────────────────────────────────
+    [colsInput, rowsInput, enableDepth, bwInput, htInput, pxInput].forEach(function(el) {
+        el.oninput = function() {
             document.getElementById('val-cols').innerText = colsInput.value;
             document.getElementById('val-rows').innerText = rowsInput.value;
-            document.getElementById('val-bw').innerText = bwInput.value + '%';
-            document.getElementById('val-ht').innerText = htInput.value + '%';
-            document.getElementById('val-px').innerText = pxInput.value + '%';
+            document.getElementById('val-bw').innerText   = bwInput.value  + '%';
+            document.getElementById('val-ht').innerText   = htInput.value  + '%';
+            document.getElementById('val-px').innerText   = pxInput.value  + '%';
+            clearCellStates();
+            swapSelected = null;
+            clearOverlay();
             render();
         };
     });
 
-    function render() {
-        if (!ready) return;
+    // ── 交换开关 ──────────────────────────────────────────
+    enableSwap.onchange = function() {
+        updateSwapUI();
+        if (!enableSwap.checked) {
+            swapSelected = null;
+            clearOverlay();
+        }
+    };
 
-        const W = 1000;
-        canvas.width = W;
-        canvas.height = W * (imgA.height / imgA.width);
+    function canSwap() {
+        return parseInt(colsInput.value) >= 2 && parseInt(rowsInput.value) >= 2;
+    }
+    function isSwapActive() {
+        return enableSwap.checked && canSwap() && isReady();
+    }
+    function updateSwapUI() {
+        const active = enableSwap.checked && canSwap();
+        document.getElementById('swap-hint').style.display = active ? 'block' : 'none';
+        canvas.style.cursor = isSwapActive() ? 'crosshair' : 'default';
+    }
 
+    // ── 格子状态 ──────────────────────────────────────────
+    function clearCellStates() {
         const cols = parseInt(colsInput.value);
         const rows = parseInt(rowsInput.value);
-        const cellW = canvas.width / cols;
-        const cellH = canvas.height / rows;
+        cellStates = [];
+        for (var r = 0; r < rows; r++) {
+            cellStates[r] = [];
+            for (var c = 0; c < cols; c++) {
+                cellStates[r][c] = (r + c) % 2 === 0 ? 0 : 1;
+            }
+        }
+    }
 
-        // 清除背景
-        ctx.fillStyle = "#000";
+    // ── Canvas 点击 ───────────────────────────────────────
+    canvas.addEventListener('click', function(e) {
+        if (!isSwapActive()) return;
+
+        var rect   = canvas.getBoundingClientRect();
+        var scaleX = canvas.width  / rect.width;
+        var scaleY = canvas.height / rect.height;
+        var mx = (e.clientX - rect.left) * scaleX;
+        var my = (e.clientY - rect.top)  * scaleY;
+
+        var cols  = parseInt(colsInput.value);
+        var rows  = parseInt(rowsInput.value);
+        var cellW = canvas.width  / cols;
+        var cellH = canvas.height / rows;
+        var c = Math.floor(mx / cellW);
+        var r = Math.floor(my / cellH);
+        if (r < 0 || r >= rows || c < 0 || c >= cols) return;
+
+        if (!swapSelected) {
+            swapSelected = { r: r, c: c };
+            drawOverlay();
+        } else if (swapSelected.r === r && swapSelected.c === c) {
+            swapSelected = null;
+            clearOverlay();
+        } else {
+            var tmp = cellStates[swapSelected.r][swapSelected.c];
+            cellStates[swapSelected.r][swapSelected.c] = cellStates[r][c];
+            cellStates[r][c] = tmp;
+            swapSelected = null;
+            clearOverlay();
+            render();
+        }
+    });
+
+    canvas.addEventListener('mousemove', function() {
+        canvas.style.cursor = isSwapActive() ? 'crosshair' : 'default';
+    });
+
+    // ── SVG Overlay（pointer-events:none，绝不拦截点击）────
+    function drawOverlay() {
+        clearOverlay();
+        if (!swapSelected) return;
+
+        var canvasRect    = canvas.getBoundingClientRect();
+        var containerRect = document.getElementById('preview-container').getBoundingClientRect();
+        var cols  = parseInt(colsInput.value);
+        var rows  = parseInt(rowsInput.value);
+        var dispCellW = canvasRect.width  / cols;
+        var dispCellH = canvasRect.height / rows;
+
+        // 相对于 preview-container 的偏移
+        var offX = canvasRect.left - containerRect.left;
+        var offY = canvasRect.top  - containerRect.top;
+        var x = offX + swapSelected.c * dispCellW;
+        var y = offY + swapSelected.r * dispCellH;
+
+        var el = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        el.setAttribute('x',            x + 1.5);
+        el.setAttribute('y',            y + 1.5);
+        el.setAttribute('width',        dispCellW - 3);
+        el.setAttribute('height',       dispCellH - 3);
+        el.setAttribute('fill',         'rgba(255,140,0,0.18)');
+        el.setAttribute('stroke',       'rgba(255,165,0,0.95)');
+        el.setAttribute('stroke-width', '1.5');
+        overlaySvg.appendChild(el);
+    }
+
+    function clearOverlay() {
+        while (overlaySvg.firstChild) overlaySvg.removeChild(overlaySvg.firstChild);
+    }
+
+    // ── 主渲染 ────────────────────────────────────────────
+    function render() {
+        if (!isReady()) return;
+
+        var natW = imgA.naturalWidth;
+        var natH = imgA.naturalHeight;
+        if (!natW || !natH) return;   // 图片尚未真正加载完毕，跳过
+
+        var W = 1000;
+        canvas.width  = W;
+        canvas.height = Math.round(W * natH / natW);
+
+        var cols  = parseInt(colsInput.value);
+        var rows  = parseInt(rowsInput.value);
+        var cellW = canvas.width  / cols;
+        var cellH = canvas.height / rows;
+
+        ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // 第一步：拼贴与深度渲染
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                const isA = (r + c) % 2 === 0;
-                const src = isA ? imgA : imgB;
-                const sx = c * (src.width / cols);
-                const sy = r * (src.height / rows);
-                const sw = src.width / cols;
-                const sh = src.height / rows;
-                const dx = c * cellW;
-                const dy = r * cellH;
+        // cellStates 尺寸不符时重建
+        if (cellStates.length !== rows || !cellStates[0] || cellStates[0].length !== cols) {
+            clearCellStates();
+        }
+
+        for (var r = 0; r < rows; r++) {
+            for (var c = 0; c < cols; c++) {
+                var isA = cellStates[r][c] === 0;
+                var src = isA ? imgA : imgB;
+                var sW  = src.naturalWidth;
+                var sH  = src.naturalHeight;
+                if (!sW || !sH) continue;    // 防止除零/黑块
+                var sx  = c * (sW / cols);
+                var sy  = r * (sH / rows);
+                var sw  = sW / cols;
+                var sh  = sH / rows;
+                var dx  = c * cellW;
+                var dy  = r * cellH;
 
                 ctx.drawImage(src, sx, sy, sw, sh, dx, dy, cellW + 0.5, cellH + 0.5);
-
-                if (enableDepth.checked) {
-                    if (isA) {
-                        ctx.fillStyle = "rgba(0,0,0,0.5)";
-                        ctx.fillRect(dx + cellW - 1.5, dy, 2, cellH); 
-                        ctx.fillRect(dx, dy + cellH - 1.5, cellW, 2); 
-                        ctx.fillStyle = "rgba(255,255,255,0.15)";
-                        ctx.fillRect(dx, dy, 1, cellH); 
-                    } else {
-                        ctx.fillStyle = "rgba(0,0,0,0.15)";
-                        ctx.fillRect(dx, dy, cellW, cellH);
-                    }
-                }
             }
         }
 
-        // 第二步：滤镜叠加逻辑
-        applyCombinedFilters();
-    }
-
-    function applyCombinedFilters() {
-        const bwS = parseInt(bwInput.value) / 100;
-        const htS = parseInt(htInput.value) / 100;
-        const pxS = parseInt(pxInput.value) / 100;
-
-        // 1. 处理低像素高斯模糊 (Lo-Fi)
-        if (pxS > 0) {
-            const tempCanvas = document.createElement('canvas');
-            const tCtx = tempCanvas.getContext('2d');
-            // 通过缩小再放大实现像素化
-            const scale = 1 - (pxS * 0.95); // 0.05到1倍
-            tempCanvas.width = canvas.width * scale;
-            tempCanvas.height = canvas.height * scale;
-            
-            tCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
-            
-            // 模糊效果
-            ctx.filter = `blur(${pxS * 10}px)`; 
-            ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, 0, 0, canvas.width, canvas.height);
-            ctx.filter = "none";
+        // ── 缝隙阴影：在所有格子绘制完后统一叠加渐变投影 ──
+        if (enableDepth.checked) {
+            var shadowW = Math.max(3, Math.round(Math.min(cellW, cellH) * 0.10)); // 投影宽度，随格子大小自适应
+            // 竖向缝隙（列之间）
+            for (var ci = 1; ci < cols; ci++) {
+                var cx = ci * cellW;
+                // 左侧格子右边缘：从透明→暗（向右渐变）
+                var gL = ctx.createLinearGradient(cx - shadowW, 0, cx, 0);
+                gL.addColorStop(0, 'rgba(0,0,0,0)');
+                gL.addColorStop(1, 'rgba(0,0,0,0.32)');
+                ctx.fillStyle = gL;
+                ctx.fillRect(cx - shadowW, 0, shadowW, canvas.height);
+                // 右侧格子左边缘：从暗→透明（向右渐变，高光）
+                var gR = ctx.createLinearGradient(cx, 0, cx + shadowW, 0);
+                gR.addColorStop(0, 'rgba(255,255,255,0.12)');
+                gR.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = gR;
+                ctx.fillRect(cx, 0, shadowW, canvas.height);
+            }
+            // 横向缝隙（行之间）
+            for (var ri = 1; ri < rows; ri++) {
+                var ry = ri * cellH;
+                // 上方格子下边缘：从透明→暗（向下渐变）
+                var gT = ctx.createLinearGradient(0, ry - shadowW, 0, ry);
+                gT.addColorStop(0, 'rgba(0,0,0,0)');
+                gT.addColorStop(1, 'rgba(0,0,0,0.32)');
+                ctx.fillStyle = gT;
+                ctx.fillRect(0, ry - shadowW, canvas.width, shadowW);
+                // 下方格子上边缘：从暗→透明（高光）
+                var gB = ctx.createLinearGradient(0, ry, 0, ry + shadowW);
+                gB.addColorStop(0, 'rgba(255,255,255,0.12)');
+                gB.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = gB;
+                ctx.fillRect(0, ry, canvas.width, shadowW);
+            }
         }
 
-        let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        let data = imageData.data;
+        applyCombinedFilters();
 
-        // 2. 处理半调网点
+        // 重绘 overlay（canvas 显示位置可能因尺寸变化而移动）
+        if (swapSelected && isSwapActive()) drawOverlay();
+    }
+
+    // ── 滤镜 ──────────────────────────────────────────────
+    function applyCombinedFilters() {
+        var bwS = parseInt(bwInput.value) / 100;
+        var htS = parseInt(htInput.value) / 100;
+        var pxS = parseInt(pxInput.value) / 100;
+
+        if (pxS > 0) {
+            var tmp   = document.createElement('canvas');
+            var scale = Math.max(0.05, 1 - pxS * 0.95);
+            tmp.width  = Math.max(1, Math.round(canvas.width  * scale));
+            tmp.height = Math.max(1, Math.round(canvas.height * scale));
+            tmp.getContext('2d').drawImage(canvas, 0, 0, tmp.width, tmp.height);
+            ctx.filter = 'blur(' + (pxS * 10) + 'px)';
+            ctx.drawImage(tmp, 0, 0, tmp.width, tmp.height, 0, 0, canvas.width, canvas.height);
+            ctx.filter = 'none';
+        }
+
+        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var data = imageData.data;
+
         if (htS > 0) {
-            ctx.fillStyle = "#fff";
-            ctx.fillRect(0,0,canvas.width, canvas.height);
-            const step = Math.floor(5 + (1 - htS) * 12);
-            for (let y = 0; y < canvas.height; y += step) {
-                for (let x = 0; x < canvas.width; x += step) {
-                    const i = (y * canvas.width + x) * 4;
-                    const gray = (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114) / 255;
-                    const radius = (step / 2) * (1 - gray) * 1.3;
-                    ctx.fillStyle = "#000";
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            var step = Math.floor(5 + (1 - htS) * 12);
+            for (var y = 0; y < canvas.height; y += step) {
+                for (var x = 0; x < canvas.width; x += step) {
+                    var i = (y * canvas.width + x) * 4;
+                    var gray = (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114) / 255;
+                    var radius = (step / 2) * (1 - gray) * 1.3;
+                    ctx.fillStyle = '#000';
                     ctx.beginPath();
                     ctx.arc(x, y, radius, 0, Math.PI * 2);
                     ctx.fill();
@@ -342,28 +701,26 @@
             data = imageData.data;
         }
 
-        // 3. 处理经典黑白混合
         if (bwS > 0) {
-            for (let i = 0; i < data.length; i += 4) {
-                const r = data[i], g = data[i+1], b = data[i+2];
-                let gray = (r * 0.299 + g * 0.587 + b * 0.114);
-                // 增强对比度产生褪色老照片感
-                gray = (gray - 128) * 1.3 + 128; 
-                data[i] = r * (1 - bwS) + gray * bwS;
-                data[i+1] = g * (1 - bwS) + gray * bwS;
-                data[i+2] = b * (1 - bwS) + gray * bwS;
+            for (var i = 0; i < data.length; i += 4) {
+                var r2 = data[i], g2 = data[i+1], b2 = data[i+2];
+                var gr = r2 * 0.299 + g2 * 0.587 + b2 * 0.114;
+                gr = (gr - 128) * 1.3 + 128;
+                data[i]   = r2 * (1 - bwS) + gr * bwS;
+                data[i+1] = g2 * (1 - bwS) + gr * bwS;
+                data[i+2] = b2 * (1 - bwS) + gr * bwS;
             }
             ctx.putImageData(imageData, 0, 0);
         }
     }
 
-    downloadBtn.onclick = () => {
-        const link = document.createElement('a');
+    // ── 导出 ──────────────────────────────────────────────
+    downloadBtn.onclick = function() {
+        var link = document.createElement('a');
         link.download = 'woven_art_black.png';
         link.href = canvas.toDataURL('image/png');
         link.click();
     };
 </script>
-
 </body>
 </html>
