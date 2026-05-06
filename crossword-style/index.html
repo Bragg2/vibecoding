@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -282,10 +281,11 @@ input[type="color"]{
   cursor:pointer;
 }
 
-input[type="checkbox"]{
+input[type="checkbox"], input[type="radio"]{
   width:15px;
   height:15px;
   accent-color:var(--accent);
+  cursor:pointer;
 }
 
 .line-preview{
@@ -507,7 +507,42 @@ input[type="checkbox"]{
         <section class="panel-section active" id="gridPanel">
           <div class="panel-title">网格设置</div>
           <div class="stack">
-            <p class="info">上传任意比例图片后，系统会根据原图比例自动裁切并生成正方形小方格矩阵。拖动密度滑块可以控制分割疏密。</p>
+            <p class="info">上传任意比例图片后，系统会根据原图比例自动生成正方形方格矩阵。拖动密度滑块可以控制分割疏密。</p>
+            
+            <div class="control-stack">
+              <label style="display:flex;align-items:center;gap:8px;color:var(--text);cursor:pointer;">
+                <input type="checkbox" id="bgEnabled"> 添加纯色背景
+              </label>
+            </div>
+
+            <div id="bgControls" class="stack" style="display:none; padding:10px 0 10px 14px; border-left:2px solid var(--line-strong);">
+              <div class="control-stack">
+                <label for="bgColor">背景颜色</label>
+                <input type="color" id="bgColor" value="#f6f1e7">
+              </div>
+              <div class="control-stack">
+                <label for="imgScale">缩小比例</label>
+                <div class="range-shell">
+                  <input type="range" id="imgScale" min="0.1" max="1" step="0.01" value="0.8">
+                  <span class="range-value" id="imgScaleVal">80%</span>
+                </div>
+              </div>
+              <div class="control-stack">
+                <label for="imgPosX">水平位置</label>
+                <div class="range-shell">
+                  <input type="range" id="imgPosX" min="0" max="1" step="0.01" value="0.5">
+                  <span class="range-value" id="imgPosXVal">50%</span>
+                </div>
+              </div>
+              <div class="control-stack">
+                <label for="imgPosY">垂直位置</label>
+                <div class="range-shell">
+                  <input type="range" id="imgPosY" min="0" max="1" step="0.01" value="0.5">
+                  <span class="range-value" id="imgPosYVal">50%</span>
+                </div>
+              </div>
+            </div>
+
             <div class="control-stack">
               <label for="gridDensity">分割密度</label>
               <div class="range-shell">
@@ -575,7 +610,7 @@ input[type="checkbox"]{
               </div>
               <div class="control-stack">
                 <label for="fontSize">字号</label>
-                <input type="number" id="fontSize" value="50" min="20" max="200">
+                <input type="number" id="fontSize" value="50" min="20" max="100">
               </div>
             </div>
             <div class="row">
@@ -583,7 +618,7 @@ input[type="checkbox"]{
                 <label for="fontColor">字色</label>
                 <input type="color" id="fontColor" value="#000000">
               </div>
-              <label style="display:flex;align-items:center;gap:8px;margin-top:20px;">
+              <label style="display:flex;align-items:center;gap:8px;margin-top:20px;cursor:pointer;">
                 <input type="checkbox" id="fontItalic"> 斜体
               </label>
             </div>
@@ -601,7 +636,28 @@ input[type="checkbox"]{
         <section class="panel-section" id="filterPanel">
           <div class="panel-title">滤镜设置</div>
           <div class="stack">
-            <p class="info">滤镜只影响图片图像，不影响网格、填充与文字。</p>
+            <p class="info">点击方块可以为局部单独加滤镜，或者使用整体滤镜覆盖全局。</p>
+            
+            <div class="control-stack" style="margin-bottom:4px;">
+              <label>应用模式</label>
+              <div class="row">
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+                  <input type="radio" name="filterMode" value="global" checked> 整体滤镜
+                </label>
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+                  <input type="radio" name="filterMode" value="cell"> 单格滤镜
+                </label>
+              </div>
+            </div>
+
+            <div class="control-stack" style="margin-bottom:4px;">
+              <label for="filterIntensity">滤镜强度</label>
+              <div class="range-shell">
+                <input type="range" id="filterIntensity" min="0" max="1" step="0.05" value="1">
+                <span class="range-value" id="filterIntensityVal">100%</span>
+              </div>
+            </div>
+
             <div class="filter-grid">
               <button class="filter-btn active" data-filter="none">原图</button>
               <button class="filter-btn" data-filter="bw">黑白复古</button>
@@ -619,7 +675,7 @@ input[type="checkbox"]{
 
     <section class="display-shell">
       <div class="display-toolbar">
-        <div class="left-meta" id="viewMeta">滚轮缩放，拖拽移动，Shift 多选方格</div>
+        <div class="left-meta" id="viewMeta"> 滚轮缩放 | 拖拽移动 | Shift 多选方格</div>
         <button class="btn sm" id="undoBtn">撤销</button>
         <button class="btn sm" id="redoBtn">重做</button>
         <button class="btn sm" id="resetBtn">全部重置</button>
@@ -663,9 +719,17 @@ const headerUploadBtn = document.getElementById('headerUploadBtn');
 const emptyUploadBtn = document.getElementById('emptyUploadBtn');
  
 let originalImage     = null;
-let filteredCanvas    = null;
-let currentFilter     = 'none';
+let filterCaches      = {};
+let globalFilter      = 'none';
+let globalFilterIntensity = 1;
+let filterApplyMode   = 'global';
 let gradmapColors     = null;
+
+let bgEnabled = false;
+let bgColor = '#f6f1e7';
+let imgScaleAmount = 0.8;
+let imgPosX = 0.5;
+let imgPosY = 0.5;
  
 let cols = 8, rows = 8;
 let imgW = 0, imgH = 0;
@@ -674,7 +738,7 @@ let gridLines = 2, lineColor = '#000000';
 let fillColor = '#ffffff', fillOpacity = 1;
 let cropX = 0, cropY = 0, cropW = 0, cropH = 0;
  
-let cellFills = {}, cellText = {}, swapMap = {};
+let cellFills = {}, cellText = {}, swapMap = {}, cellFilters = {};
 let currentMode    = 'fill';
 let swapFirst      = null;
 let selectedCells  = new Set();
@@ -687,9 +751,10 @@ let viewScale = 1, fitScale = 1, panX = 0, panY = 0;
 let isDraggingView = false, dragMoved = false, suppressCanvasClick = false;
 let dragStartX = 0, dragStartY = 0, dragOriginX = 0, dragOriginY = 0;
 
-function cellW(){ return Math.floor(imgW / cols); }
-function cellH(){ return Math.floor(imgH / rows); }
- 
+function cellW(){ return imgW / cols; }
+function cellH(){ return imgH / rows; }
+
+// Utils & Math
 const SWATCHES = [
   '#FF3B30','#FF9500','#FFCC00','#34C759',
   '#00B4FF','#007AFF','#5856D6','#AF52DE',
@@ -712,30 +777,10 @@ function initSwatches(){
 }
  
 const GM_PRESETS = [
-  [
-    { t: 0, color: '#2fa7e8' },
-    { t: 0.38, color: '#ff4db8' },
-    { t: 0.72, color: '#ff8a00' },
-    { t: 1, color: '#ffe14a' }
-  ],
-  [
-    { t: 0, color: '#0f3b8c' },
-    { t: 0.32, color: '#8a39ff' },
-    { t: 0.68, color: '#ff4f7a' },
-    { t: 1, color: '#ffd84d' }
-  ],
-  [
-    { t: 0, color: '#173b78' },
-    { t: 0.28, color: '#00a6ff' },
-    { t: 0.58, color: '#ff5fa2' },
-    { t: 1, color: '#ffe65c' }
-  ],
-  [
-    { t: 0, color: '#06246b' },
-    { t: 0.34, color: '#00d2ff' },
-    { t: 0.64, color: '#ff7a00' },
-    { t: 1, color: '#fff07b' }
-  ]
+  [ { t: 0, color: '#2fa7e8' }, { t: 0.38, color: '#ff4db8' }, { t: 0.72, color: '#ff8a00' }, { t: 1, color: '#ffe14a' } ],
+  [ { t: 0, color: '#0f3b8c' }, { t: 0.32, color: '#8a39ff' }, { t: 0.68, color: '#ff4f7a' }, { t: 1, color: '#ffd84d' } ],
+  [ { t: 0, color: '#173b78' }, { t: 0.28, color: '#00a6ff' }, { t: 0.58, color: '#ff5fa2' }, { t: 1, color: '#ffe65c' } ],
+  [ { t: 0, color: '#06246b' }, { t: 0.34, color: '#00d2ff' }, { t: 0.64, color: '#ff7a00' }, { t: 1, color: '#fff07b' } ]
 ];
 function randomGradmap(){ return GM_PRESETS[Math.floor(Math.random()*GM_PRESETS.length)].map(stop => ({ ...stop })); }
 function hexToRgb(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
@@ -765,9 +810,7 @@ function sampleGradmap(stops, t){
   return hexToRgb(stops[stops.length - 1].color);
 }
 
-function clamp(v, min, max){
-  return Math.max(min, Math.min(max, v));
-}
+function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
 
 function setRangeProgress(el){
   const min = parseFloat(el.min || 0);
@@ -825,22 +868,21 @@ function updateCropRegion(){
   }
 }
 
-function applyFilter(filter){
-  if(!originalImage) return;
+function getFilteredCanvas(type) {
   const tmp = document.createElement('canvas');
   tmp.width = imgW; tmp.height = imgH;
   const tc = tmp.getContext('2d');
   tc.drawImage(originalImage, cropX, cropY, cropW, cropH, 0, 0, imgW, imgH);
-  if(filter === 'none'){ filteredCanvas = tmp; return; }
+  if(type === 'none') return tmp;
+
   const d = tc.getImageData(0,0,imgW,imgH), px = d.data;
- 
-  if(filter === 'bw'){
+  if(type === 'bw'){
     for(let i=0;i<px.length;i+=4){
       const g = 0.2126*px[i]+0.7152*px[i+1]+0.0722*px[i+2];
       const v = Math.max(0,Math.min(255,((g-128)*1.35)+128));
       px[i]=px[i+1]=px[i+2]=v;
     }
-  } else if(filter === 'film'){
+  } else if(type === 'film'){
     for(let i=0;i<px.length;i+=4){
       px[i]  =Math.min(255,px[i]*0.88+12);
       px[i+1]=Math.min(255,px[i+1]*0.84+6);
@@ -856,108 +898,203 @@ function applyFilter(filter){
       const f=1-0.48*Math.pow(Math.sqrt((x-cx)**2+(y-cy)**2)/md,1.6);
       px[idx]*=f; px[idx+1]*=f; px[idx+2]*=f;
     }
-  } else if(filter === 'gradmap'){
+  } else if(type === 'gradmap'){
     if(!gradmapColors) gradmapColors = randomGradmap();
     for(let i=0;i<px.length;i+=4){
       const lum = (0.2126*px[i]+0.7152*px[i+1]+0.0722*px[i+2])/255;
       const boosted = Math.pow(Math.min(1, Math.max(0, lum)), 0.8);
       const [r,g,b] = sampleGradmap(gradmapColors, boosted);
-      px[i] = r;
-      px[i+1] = g;
-      px[i+2] = b;
+      px[i] = r; px[i+1] = g; px[i+2] = b;
     }
   }
   tc.putImageData(d,0,0);
-  filteredCanvas = tmp;
+  return tmp;
+}
+
+function refreshFilters(){
+  if(!originalImage) return;
+  filterCaches['none'] = getFilteredCanvas('none');
+  filterCaches['bw'] = getFilteredCanvas('bw');
+  filterCaches['film'] = getFilteredCanvas('film');
+  filterCaches['gradmap'] = getFilteredCanvas('gradmap');
+}
+
+function getActiveRect(){
+  let activeW = canvas.width, activeH = canvas.height;
+  let activeX = 0, activeY = 0;
+  if(bgEnabled){
+    activeW = Math.round(canvas.width * imgScaleAmount);
+    activeH = Math.round(canvas.height * imgScaleAmount);
+    activeX = Math.round((canvas.width - activeW) * imgPosX);
+    activeY = Math.round((canvas.height - activeH) * imgPosY);
+  }
+  return { activeX, activeY, activeW, activeH, drawCW: activeW/cols, drawCH: activeH/rows };
 }
  
 function render(){
   if(!originalImage) return;
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  const cw = cellW(), ch = cellH();
+
+  if (bgEnabled) {
+    ctx.fillStyle = bgColor;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+
+  const { activeX, activeY, activeW, activeH, drawCW, drawCH } = getActiveRect();
+  const cw = imgW / cols, ch = imgH / rows; // Original scale for cache reading
  
-  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
-    const src = swapMap[`${r},${c}`]||`${r},${c}`;
-    const [sr,sc] = src.split(',').map(Number);
-    ctx.drawImage(filteredCanvas, sc*cw, sr*ch, cw, ch, c*cw, r*ch, cw, ch);
+  // Base cells with filters
+  for(let r=0;r<rows;r++) {
+    for(let c=0;c<cols;c++) {
+      const src = swapMap[`${r},${c}`]||`${r},${c}`;
+      const [sr,sc] = src.split(',').map(Number);
+      
+      const fType = filterApplyMode === 'global' ? globalFilter : (cellFilters[`${r},${c}`]?.type || 'none');
+      const fInt  = filterApplyMode === 'global' ? globalFilterIntensity : (cellFilters[`${r},${c}`]?.intensity || 1);
+
+      // Draw base un-filtered
+      ctx.drawImage(filterCaches['none'], sc*cw, sr*ch, cw, ch, activeX + c*drawCW, activeY + r*drawCH, drawCW + 0.5, drawCH + 0.5);
+
+      // Overlay filter if any
+      if (fType !== 'none' && fInt > 0) {
+        ctx.save();
+        ctx.globalAlpha = fInt;
+        ctx.drawImage(filterCaches[fType], sc*cw, sr*ch, cw, ch, activeX + c*drawCW, activeY + r*drawCH, drawCW + 0.5, drawCH + 0.5);
+        ctx.restore();
+      }
+    }
   }
  
+  // Fills
   for(const [key,fill] of Object.entries(cellFills)){
     const [r,c]=key.split(',').map(Number);
     ctx.save(); ctx.globalAlpha=fill.opacity; ctx.fillStyle=fill.color;
-    ctx.fillRect(c*cw, r*ch, cw, ch); ctx.restore();
+    ctx.fillRect(activeX + c*drawCW, activeY + r*drawCH, drawCW + 0.5, drawCH + 0.5); 
+    ctx.restore();
   }
  
+  // Grid Lines
   ctx.save();
   ctx.beginPath();
-  ctx.rect(0,0,canvas.width,canvas.height);
+  ctx.rect(activeX, activeY, activeW, activeH);
   ctx.clip();
   ctx.strokeStyle = lineColor;
   ctx.lineWidth = gridLines;
   ctx.lineCap = 'butt';
   const inset = gridLines / 2;
   for(let c=0;c<=cols;c++){
-    const x = Math.min(canvas.width - inset, Math.max(inset, c*cw));
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, canvas.height);
-    ctx.stroke();
+    const x = activeX + Math.min(activeW - inset, Math.max(inset, c*drawCW));
+    ctx.beginPath(); ctx.moveTo(x, activeY); ctx.lineTo(x, activeY + activeH); ctx.stroke();
   }
   for(let r=0;r<=rows;r++){
-    const y = Math.min(canvas.height - inset, Math.max(inset, r*ch));
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(canvas.width, y);
-    ctx.stroke();
+    const y = activeY + Math.min(activeH - inset, Math.max(inset, r*drawCH));
+    ctx.beginPath(); ctx.moveTo(activeX, y); ctx.lineTo(activeX + activeW, y); ctx.stroke();
   }
   ctx.restore();
  
+  // Text
   ctx.textAlign='center'; ctx.textBaseline='middle';
   const italicStyle = fontItalic ? 'italic ' : '';
-  ctx.font = `${italicStyle}${fontSize}px ${fontFamily}`;
+  const scaledFontSize = fontSize * (bgEnabled ? imgScaleAmount : 1);
+  ctx.font = `${italicStyle}${scaledFontSize}px ${fontFamily}`;
   
   for(const [key,txt] of Object.entries(cellText)){
     if(!txt) continue;
     const [r,c]=key.split(',').map(Number);
-    const x=c*cw+cw/2, y=r*ch+ch/2;
+    const x = activeX + c*drawCW + drawCW/2;
+    const y = activeY + r*drawCH + drawCH/2;
     ctx.fillStyle=fontColor; ctx.fillText(txt,x,y);
   }
+
   renderOverlay(); updateStatus();
 }
  
 function renderOverlay(){
   octx.clearRect(0,0,overlay.width,overlay.height);
-  const cw=cellW(), ch=cellH();
+  const { activeX, activeY, drawCW, drawCH } = getActiveRect();
+
+  function drawCellStroke(r, c, fillStyle, strokeStyle, dashed=false) {
+    octx.fillStyle = fillStyle;
+    octx.strokeStyle = strokeStyle;
+    octx.lineWidth = 1.5;
+    if (dashed) octx.setLineDash([4,3]); else octx.setLineDash([]);
+    octx.fillRect(activeX + c*drawCW, activeY + r*drawCH, drawCW, drawCH);
+    octx.strokeRect(activeX + c*drawCW + 1, activeY + r*drawCH + 1, drawCW - 2, drawCH - 2);
+  }
+
   selectedCells.forEach(key=>{
     const [r,c]=key.split(',').map(Number);
-    octx.fillStyle='rgba(255,255,255,0.15)'; octx.strokeStyle='rgba(255,255,255,0.7)';
-    octx.lineWidth=1.5; octx.fillRect(c*cw,r*ch,cw,ch); octx.strokeRect(c*cw+1,r*ch+1,cw-2,ch-2);
+    drawCellStroke(r, c, 'rgba(255,255,255,0.15)', 'rgba(255,255,255,0.7)');
   });
   if(activeTextCell){
     const [r,c]=activeTextCell.split(',').map(Number);
-    octx.fillStyle='rgba(255,255,255,0.12)'; octx.strokeStyle='rgba(255,255,255,0.9)';
-    octx.lineWidth=1.5; octx.fillRect(c*cw,r*ch,cw,ch); octx.strokeRect(c*cw+1,r*ch+1,cw-2,ch-2);
+    drawCellStroke(r, c, 'rgba(255,255,255,0.12)', 'rgba(255,255,255,0.9)');
   }
   if(swapFirst){
     const [r,c]=swapFirst.split(',').map(Number);
-    octx.fillStyle='rgba(255,255,255,0.08)'; octx.strokeStyle='rgba(255,255,255,0.5)';
-    octx.setLineDash([4,3]); octx.lineWidth=1.5;
-    octx.fillRect(c*cw,r*ch,cw,ch); octx.strokeRect(c*cw+1,r*ch+1,cw-2,ch-2); octx.setLineDash([]);
+    drawCellStroke(r, c, 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.5)', true);
   }
+  octx.setLineDash([]);
 }
  
-function snap(){ return { f:JSON.parse(JSON.stringify(cellFills)), t:JSON.parse(JSON.stringify(cellText)), s:JSON.parse(JSON.stringify(swapMap)) }; }
+function snap(){ 
+  return { 
+    f:JSON.parse(JSON.stringify(cellFills)), 
+    t:JSON.parse(JSON.stringify(cellText)), 
+    s:JSON.parse(JSON.stringify(swapMap)),
+    cf:JSON.parse(JSON.stringify(cellFilters)),
+    bgE: bgEnabled, bgC: bgColor, imgS: imgScaleAmount, imgX: imgPosX, imgY: imgPosY
+  }; 
+}
 function saveHistory(){ history=history.slice(0,historyIndex+1); history.push(snap()); if(history.length>60) history.shift(); historyIndex=history.length-1; }
 function undo(){ if(historyIndex>0){ historyIndex--; restore(history[historyIndex]); } }
 function redo(){ if(historyIndex<history.length-1){ historyIndex++; restore(history[historyIndex]); } }
-function restore(s){ cellFills=JSON.parse(JSON.stringify(s.f)); cellText=JSON.parse(JSON.stringify(s.t)); swapMap=JSON.parse(JSON.stringify(s.s)); render(); }
+function restore(s){ 
+  cellFills=JSON.parse(JSON.stringify(s.f)); 
+  cellText=JSON.parse(JSON.stringify(s.t)); 
+  swapMap=JSON.parse(JSON.stringify(s.s)); 
+  cellFilters=s.cf ? JSON.parse(JSON.stringify(s.cf)) : {};
+  
+  bgEnabled = s.bgE || false;
+  bgColor = s.bgC || '#f6f1e7';
+  imgScaleAmount = s.imgS !== undefined ? s.imgS : 0.8;
+  imgPosX = s.imgX !== undefined ? s.imgX : 0.5;
+  imgPosY = s.imgY !== undefined ? s.imgY : 0.5;
+
+  document.getElementById('bgEnabled').checked = bgEnabled;
+  document.getElementById('bgColor').value = bgColor;
+  document.getElementById('imgScale').value = imgScaleAmount;
+  document.getElementById('imgPosX').value = imgPosX;
+  document.getElementById('imgPosY').value = imgPosY;
+  document.getElementById('bgControls').style.display = bgEnabled ? 'flex' : 'none';
+  
+  setRangeProgress(document.getElementById('imgScale'));
+  setRangeProgress(document.getElementById('imgPosX'));
+  setRangeProgress(document.getElementById('imgPosY'));
+  document.getElementById('imgScaleVal').textContent = Math.round(imgScaleAmount*100)+'%';
+  document.getElementById('imgPosXVal').textContent = Math.round(imgPosX*100)+'%';
+  document.getElementById('imgPosYVal').textContent = Math.round(imgPosY*100)+'%';
+
+  render(); 
+}
  
 function pickCell(e){
   const rect=canvas.getBoundingClientRect();
-  const x=(e.clientX-rect.left)*(canvas.width/rect.width);
-  const y=(e.clientY-rect.top)*(canvas.height/rect.height);
-  const cw=cellW(), ch=cellH();
-  const c=Math.floor(x/cw), r=Math.floor(y/ch);
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  let x = (e.clientX - rect.left) * scaleX;
+  let y = (e.clientY - rect.top) * scaleY;
+
+  const { activeX, activeY, activeW, activeH, drawCW, drawCH } = getActiveRect();
+
+  if (x < activeX || x > activeX + activeW || y < activeY || y > activeY + activeH) {
+     return null;
+  }
+
+  x -= activeX;
+  y -= activeY;
+
+  const c=Math.floor(x/drawCW), r=Math.floor(y/drawCH);
   return (r>=0&&r<rows&&c>=0&&c<cols)?`${r},${c}`:null;
 }
  
@@ -967,7 +1104,11 @@ canvas.addEventListener('click', e=>{
     suppressCanvasClick = false;
     return;
   }
-  const key=pickCell(e); if(!key) return;
+  const key=pickCell(e); 
+  
+  if(!key) {
+    return;
+  }
  
   if(currentMode==='fill'){
     if(e.shiftKey){
@@ -989,6 +1130,23 @@ canvas.addEventListener('click', e=>{
     if(!swapFirst){ swapFirst=key; renderOverlay(); }
     else if(swapFirst===key){ swapFirst=null; renderOverlay(); }
     else { saveHistory(); const a=swapMap[swapFirst]||swapFirst, b=swapMap[key]||key; swapMap[swapFirst]=b; swapMap[key]=a; swapFirst=null; render(); }
+  } else if(currentMode==='filter'){
+    if(filterApplyMode === 'cell'){
+      saveHistory();
+      if(globalFilter === 'none') {
+        delete cellFilters[key];
+      } else {
+        cellFilters[key] = { type: globalFilter, intensity: globalFilterIntensity };
+      }
+      render();
+    }
+  }
+});
+
+canvasViewport.addEventListener('click', e=>{
+  if (suppressCanvasClick) {
+    suppressCanvasClick = false;
+    return;
   }
 });
  
@@ -1032,6 +1190,7 @@ function setupCanvas(){
   canvasWrapperEl.style.width = `${imgW}px`;
   canvasWrapperEl.style.height = `${imgH}px`;
   fitCanvasToStage();
+  refreshFilters();
 }
  
 function loadImage(file){
@@ -1043,13 +1202,16 @@ function loadImage(file){
       const auto = computeGridFromDensity(img.naturalWidth, img.naturalHeight, density);
       cols = auto.cols;
       rows = auto.rows;
+      
       setupCanvas();
 
-      applyFilter(currentFilter);
-      cellFills={}; cellText={}; swapMap={}; activeTextCell=null; swapFirst=null; selectedCells.clear();
+      cellFills={}; cellText={}; swapMap={}; cellFilters={}; 
+      activeTextCell=null; swapFirst=null; selectedCells.clear();
       history=[]; historyIndex=-1; saveHistory();
+      
       document.getElementById('noImageMsg').style.display='none';
       canvasWrapperEl.style.display='block';
+      
       fitCanvasToStage();
       render();
       fileInput.value = '';
@@ -1061,8 +1223,33 @@ function loadImage(file){
  
 fileInput.addEventListener('change', e=>{ if(e.target.files[0]) loadImage(e.target.files[0]); });
 headerUploadBtn.addEventListener('click', ()=>fileInput.click());
-emptyUploadBtn.addEventListener('click', ()=>fileInput.click());
+emptyUploadBtn.addEventListener('click', (e)=> { e.stopPropagation(); fileInput.click(); });
+// 修复：让整个初始空白提示区域都能响应点击上传
+document.getElementById('noImageMsg').addEventListener('click', ()=>fileInput.click());
  
+// Grid and BG Adjustments
+document.getElementById('bgEnabled').addEventListener('change', e => {
+  bgEnabled = e.target.checked;
+  document.getElementById('bgControls').style.display = bgEnabled ? 'flex' : 'none';
+  saveHistory(); render();
+});
+document.getElementById('bgColor').addEventListener('input', e => { bgColor = e.target.value; if(originalImage) render(); });
+document.getElementById('imgScale').addEventListener('input', e => { 
+  imgScaleAmount = parseFloat(e.target.value); 
+  document.getElementById('imgScaleVal').textContent = Math.round(imgScaleAmount*100)+'%';
+  setRangeProgress(e.target); if(originalImage) render(); 
+});
+document.getElementById('imgPosX').addEventListener('input', e => { 
+  imgPosX = parseFloat(e.target.value); 
+  document.getElementById('imgPosXVal').textContent = Math.round(imgPosX*100)+'%';
+  setRangeProgress(e.target); if(originalImage) render(); 
+});
+document.getElementById('imgPosY').addEventListener('input', e => { 
+  imgPosY = parseFloat(e.target.value); 
+  document.getElementById('imgPosYVal').textContent = Math.round(imgPosY*100)+'%';
+  setRangeProgress(e.target); if(originalImage) render(); 
+});
+
 function gridUpdate(){
   density=Math.max(4,parseInt(document.getElementById('gridDensity').value)||8);
   gridLines=parseFloat(document.getElementById('lineWidth').value);
@@ -1074,7 +1261,6 @@ function gridUpdate(){
   cols = auto.cols;
   rows = auto.rows;
   setupCanvas();
-  applyFilter(currentFilter);
   saveHistory(); render();
 }
 document.getElementById('gridDensity').addEventListener('input',gridUpdate);
@@ -1099,25 +1285,42 @@ document.getElementById('clearFillBtn').addEventListener('click', ()=>{
 document.getElementById('fontSize').addEventListener('input', e=>{ fontSize=parseInt(e.target.value)||22; if(originalImage) render(); });
 document.getElementById('fontColor').addEventListener('input', e=>{ fontColor=e.target.value; if(originalImage) render(); });
 document.getElementById('fontFamily').addEventListener('change', e=>{ fontFamily=e.target.value; if(originalImage) render(); });
+document.getElementById('fontItalic').addEventListener('change', e=>{ fontItalic = e.target.checked; if(originalImage) render(); });
 
-// 斜体开关
-document.getElementById('fontItalic').addEventListener('change', e=>{
-  fontItalic = e.target.checked;
-  if(originalImage) render();
+// Filter Interactions
+document.querySelectorAll('input[name="filterMode"]').forEach(radio => {
+  radio.addEventListener('change', e => {
+    filterApplyMode = e.target.value;
+    if(originalImage) render();
+  });
 });
- 
+
+document.getElementById('filterIntensity').addEventListener('input', e => {
+  globalFilterIntensity = parseFloat(e.target.value);
+  document.getElementById('filterIntensityVal').textContent = Math.round(globalFilterIntensity * 100) + '%';
+  setRangeProgress(e.target);
+  if (filterApplyMode === 'global' && originalImage) render();
+});
+
 document.querySelectorAll('.filter-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active'); currentFilter=btn.dataset.filter;
+    btn.classList.add('active'); 
+    globalFilter = btn.dataset.filter;
+    
     const extra=document.getElementById('gradmapExtra');
-    if(currentFilter==='gradmap'){ if(!gradmapColors){ gradmapColors=randomGradmap(); updateGradmapPreview(); } extra.style.display='block'; }
+    if(globalFilter==='gradmap'){ if(!gradmapColors){ gradmapColors=randomGradmap(); updateGradmapPreview(); } extra.style.display='block'; }
     else extra.style.display='none';
-    if(originalImage){ applyFilter(currentFilter); render(); }
+    
+    if(filterApplyMode === 'global' && originalImage) render();
   });
 });
 document.getElementById('rollGradmap').addEventListener('click', ()=>{
-  gradmapColors=randomGradmap(); updateGradmapPreview(); if(originalImage){ applyFilter('gradmap'); render(); }
+  gradmapColors=randomGradmap(); updateGradmapPreview(); 
+  if(originalImage){ 
+    filterCaches['gradmap'] = getFilteredCanvas('gradmap'); 
+    render(); 
+  }
 });
 
 document.querySelectorAll('.nav-item').forEach(btn=>{
@@ -1131,7 +1334,7 @@ document.querySelectorAll('.nav-item').forEach(btn=>{
       fillPanel:'fill',
       textPanel:'text',
       swapPanel:'swap',
-      filterPanel:'fill'
+      filterPanel:'filter'
     };
     setMode(modeMap[btn.dataset.panel] || 'fill');
   });
@@ -1139,7 +1342,7 @@ document.querySelectorAll('.nav-item').forEach(btn=>{
  
 function setMode(mode){
   currentMode=mode; swapFirst=null; activeTextCell=null; selectedCells.clear();
-  const lbl={fill:'填充',text:'文字',swap:'错位'};
+  const lbl={fill:'填充',text:'文字',swap:'错位',filter:'滤镜'};
   document.getElementById('sMode').textContent='模式: '+lbl[mode];
   document.getElementById('selectedCellHint').textContent= mode==='text'?'— 点击已填色方格进行编辑 —':'— 未选中方格 —';
   renderOverlay();
@@ -1154,12 +1357,16 @@ document.addEventListener('keydown', e=>{
  
 document.getElementById('resetBtn').addEventListener('click', ()=>{
   if(!originalImage) return;
-  cellFills={}; cellText={}; swapMap={}; currentFilter='none'; gradmapColors=null;
+  cellFills={}; cellText={}; swapMap={}; cellFilters={}; globalFilter='none'; gradmapColors=null; globalFilterIntensity=1;
   activeTextCell=null; swapFirst=null; selectedCells.clear();
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
   document.querySelector('[data-filter="none"]').classList.add('active');
   document.getElementById('gradmapExtra').style.display='none';
-  applyFilter('none'); history=[]; historyIndex=-1; saveHistory(); render();
+  document.getElementById('filterIntensity').value = 1;
+  document.getElementById('filterIntensityVal').textContent = '100%';
+  setRangeProgress(document.getElementById('filterIntensity'));
+  
+  history=[]; historyIndex=-1; saveHistory(); render();
 });
  
 function exportImage(type){
@@ -1221,7 +1428,7 @@ window.addEventListener('resize', ()=>{
 });
  
 function updateStatus(){
-  const cw=cellW(),ch=cellH();
+  const cw=Math.round(imgW/cols),ch=Math.round(imgH/rows);
   document.getElementById('sGrid').textContent=`网格: ${cols}×${rows}  密度: ${density}  格: ${cw}×${ch}px`;
   document.getElementById('sCells').textContent=`已填充: ${Object.keys(cellFills).length}`;
 }
@@ -1230,6 +1437,10 @@ initSwatches();
 updateDensityUI(density);
 updateLineWidthUI(gridLines);
 updateFillOpacityUI(fillOpacity);
+setRangeProgress(document.getElementById('imgScale'));
+setRangeProgress(document.getElementById('imgPosX'));
+setRangeProgress(document.getElementById('imgPosY'));
+setRangeProgress(document.getElementById('filterIntensity'));
 setMode('fill');
 updateStatus();
 </script>
