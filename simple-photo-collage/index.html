@@ -197,7 +197,6 @@
             z-index: 1;
         }
 
-        /* SVG overlay — pointer-events:none 完全不拦截点击 */
         #swap-overlay-svg {
             position: absolute;
             pointer-events: none;
@@ -206,18 +205,19 @@
             z-index: 2;
         }
 
+        .btn-secondary {
+            background: #111; border: 1px solid #444; color: #ccc;
+            padding: 8px; width: 100%; cursor: pointer;
+            font-size: 11px; letter-spacing: 1px;
+            margin-top: 10px;
+        }
+        .btn-secondary:hover { background: #222; color: #fff; }
+
         .export-btn {
-            background: #fff;
-            color: #000;
-            border: none;
-            padding: 15px;
-            margin-top: auto;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 12px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            width: 100%;
+            background: #fff; color: #000; border: none;
+            padding: 15px; margin-top: auto; cursor: pointer;
+            font-weight: bold; font-size: 12px;
+            letter-spacing: 2px; text-transform: uppercase; width: 100%;
         }
         .export-btn:hover { background: #ccc; }
     </style>
@@ -229,13 +229,11 @@
 
     <div class="menu-section">
         <span class="menu-label">/ 媒体上传</span>
-
         <div class="mode-tabs">
-            <button class="mode-tab active" id="tab-double" onclick="switchMode('double')">双图模式</button>
-            <button class="mode-tab" id="tab-single" onclick="switchMode('single')">单图+底色</button>
+            <button class="mode-tab active" id="tab-double" onclick="switchMediaMode('double')">双图模式</button>
+            <button class="mode-tab" id="tab-single" onclick="switchMediaMode('single')">单图+底色</button>
         </div>
 
-        <!-- 双图模式 -->
         <div id="mode-double">
             <div class="upload-area" id="upload-double" onclick="document.getElementById('imgInputDouble').click()">
                 <div style="font-size:13px;font-weight:bold;">上传 2 张照片</div>
@@ -248,7 +246,6 @@
             </div>
         </div>
 
-        <!-- 单图+底色模式 -->
         <div id="mode-single">
             <div class="upload-area" id="upload-single" onclick="document.getElementById('imgInputSingle').click()">
                 <div style="font-size:13px;font-weight:bold;">上传 1 张照片</div>
@@ -268,14 +265,23 @@
     </div>
 
     <div class="menu-section">
+        <span class="menu-label">/ 裁切模式</span>
+        <div class="mode-tabs">
+            <button class="mode-tab active" id="tab-grid-std" onclick="switchGridMode('standard')">标准等距</button>
+            <button class="mode-tab" id="tab-grid-irr" onclick="switchGridMode('irregular')">错位斜纹</button>
+        </div>
+        <button id="btn-regen" class="btn-secondary" style="display:none;" onclick="forceRegenGrid()">随机生成扭曲度</button>
+    </div>
+
+    <div class="menu-section">
         <span class="menu-label">/ 裁切密度</span>
         <div class="control-item">
-            <div class="label-row"><span>纵向分条</span><span id="val-cols">12</span></div>
-            <input type="range" id="cols" min="1" max="80" value="12">
+            <div class="label-row"><span>经向分割 (纵)</span><span id="val-cols">12</span></div>
+            <input type="range" id="cols" min="2" max="60" value="12">
         </div>
         <div class="control-item">
-            <div class="label-row"><span>横向分条</span><span id="val-rows">12</span></div>
-            <input type="range" id="rows" min="1" max="80" value="12">
+            <div class="label-row"><span>纬向分割 (横)</span><span id="val-rows">12</span></div>
+            <input type="range" id="rows" min="2" max="60" value="12">
         </div>
     </div>
 
@@ -286,16 +292,41 @@
         </label>
         <div id="swap-hint">
             点击<b>第一个格子</b>选中（橙色高亮），<br>
-            再点击另一个格子完成<b>位置交换</b>。<br>
-            再次点击已选格子可<b>取消选中</b>。
+            再点击另一个格子完成<b>位置交换</b>。
+        </div>
+    </div>
+
+    <div class="menu-section">
+        <span class="menu-label">/ 背景与布局</span>
+        <label class="checkbox-group">
+            <input type="checkbox" id="enableLayout"> 开启背景空间
+        </label>
+        <div id="layout-controls" style="display:none; padding-top: 5px;">
+            <div class="color-row" style="margin-bottom: 15px;">
+                <span class="color-label">空间颜色</span>
+                <input type="color" id="layoutColor" value="#ffcc00">
+            </div>
+            <div class="control-item">
+                <div class="label-row"><span>主体缩放</span><span id="val-scale">50%</span></div>
+                <input type="range" id="layoutScale" min="10" max="100" value="50">
+            </div>
+            <div class="control-item">
+                <div class="label-row"><span>水平偏移</span><span id="val-panx">0</span></div>
+                <input type="range" id="layoutPanX" min="-500" max="500" value="0">
+            </div>
+            <div class="control-item">
+                <div class="label-row"><span>垂直偏移</span><span id="val-pany">0</span></div>
+                <input type="range" id="layoutPanY" min="-500" max="500" value="0">
+            </div>
         </div>
     </div>
 
     <div class="menu-section">
         <span class="menu-label">/ 细节渲染</span>
-        <label class="checkbox-group">
-            <input type="checkbox" id="enableDepth" checked> 开启拼接缝隙阴影
-        </label>
+        <div class="control-item">
+            <div class="label-row"><span>交汇阴影线强度</span><span id="val-depth">50</span></div>
+            <input type="range" id="depthStrength" min="0" max="100" value="50">
+        </div>
     </div>
 
     <div class="menu-section">
@@ -319,7 +350,6 @@
 
 <div id="preview-container">
     <canvas id="mainCanvas"></canvas>
-    <!-- pointer-events:none，不会拦截任何 canvas 点击 -->
     <svg id="swap-overlay-svg" xmlns="http://www.w3.org/2000/svg"></svg>
 </div>
 
@@ -330,47 +360,69 @@
 
     const colsInput   = document.getElementById('cols');
     const rowsInput   = document.getElementById('rows');
-    const enableDepth = document.getElementById('enableDepth');
     const enableSwap  = document.getElementById('enableSwap');
+    
+    const depthInput  = document.getElementById('depthStrength');
     const bwInput     = document.getElementById('bwStrength');
     const htInput     = document.getElementById('htStrength');
-    const pxInput     = document.getElementById('pxStrength');
-    const downloadBtn = document.getElementById('downloadBtn');
-    const bgColorInput= document.getElementById('bgColor');
-    const bgColorHex  = document.getElementById('bgColorHex');
+    const pxInput     = document.getElementById('pxStrength'); 
+    
+    // Layout Controls
+    const enableLayout = document.getElementById('enableLayout');
+    const layoutControls = document.getElementById('layout-controls');
+    const layoutColor = document.getElementById('layoutColor');
+    const layoutScale = document.getElementById('layoutScale');
+    const layoutPanX  = document.getElementById('layoutPanX');
+    const layoutPanY  = document.getElementById('layoutPanY');
 
-    // 固定 Image 对象，避免引用丢失
     const imgA = new Image();
     const imgB = new Image();
     let imgALoaded = false;
     let imgBLoaded = false;
 
-    let currentMode  = 'double';
+    let currentMediaMode = 'double';
+    let currentGridMode  = 'standard';
+    
     let cellStates   = [];
+    let gridPoints   = []; 
+    let needsGridUpdate = true;
     let swapSelected = null;
 
     function isReady() { return imgALoaded && imgBLoaded; }
 
     // ── 模式切换 ──────────────────────────────────────────
-    window.switchMode = function(mode) {
-        currentMode = mode;
+    window.switchMediaMode = function(mode) {
+        currentMediaMode = mode;
         document.getElementById('mode-double').style.display = mode === 'double' ? 'block' : 'none';
         document.getElementById('mode-single').style.display = mode === 'single' ? 'block' : 'none';
         document.getElementById('tab-double').classList.toggle('active', mode === 'double');
         document.getElementById('tab-single').classList.toggle('active', mode === 'single');
         imgALoaded = imgBLoaded = false;
         swapSelected = null;
-        clearCellStates();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         clearOverlay();
     };
 
-    // ── 双图上传 ──────────────────────────────────────────
+    window.switchGridMode = function(mode) {
+        currentGridMode = mode;
+        document.getElementById('tab-grid-std').classList.toggle('active', mode === 'standard');
+        document.getElementById('tab-grid-irr').classList.toggle('active', mode === 'irregular');
+        document.getElementById('btn-regen').style.display = mode === 'irregular' ? 'block' : 'none';
+        forceRegenGrid();
+    };
+
+    window.forceRegenGrid = function() {
+        needsGridUpdate = true;
+        swapSelected = null;
+        clearOverlay();
+        render();
+    };
+
+    // ── 上传逻辑 ──────────────────────────────────────────
     document.getElementById('imgInputDouble').onchange = function(e) {
         const files = e.target.files;
         if (files.length !== 2) { alert('请确保同时选中 2 张图片！'); return; }
         imgALoaded = imgBLoaded = false;
-
         function loadOne(file, imgObj, thumbId, flagSetter) {
             const reader = new FileReader();
             reader.onload = function(ev) {
@@ -383,15 +435,12 @@
             };
             reader.readAsDataURL(file);
         }
-
-        loadOne(files[0], imgA, 'thumb-a', function(v){ imgALoaded = v; });
-        loadOne(files[1], imgB, 'thumb-b', function(v){ imgBLoaded = v; });
-
+        loadOne(files[0], imgA, 'thumb-a', v => imgALoaded = v);
+        loadOne(files[1], imgB, 'thumb-b', v => imgBLoaded = v);
         document.getElementById('thumb-double').style.display = 'flex';
         document.getElementById('upload-double').classList.add('loaded');
     };
 
-    // ── 单图上传 ──────────────────────────────────────────
     document.getElementById('imgInputSingle').onchange = function(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -401,10 +450,7 @@
             imgA.onload = function() {
                 imgALoaded = true;
                 setThumbSrc('thumb-single-img', ev.target.result);
-                buildColorImageB(function() {
-                    imgBLoaded = true;
-                    onBothLoaded();
-                });
+                buildColorImageB(() => { imgBLoaded = true; onBothLoaded(); });
             };
             imgA.src = ev.target.result;
         };
@@ -413,32 +459,22 @@
         document.getElementById('upload-single').classList.add('loaded');
     };
 
-    bgColorInput.oninput = function() {
-        bgColorHex.textContent = bgColorInput.value;
-        updateColorThumb();
-        if (currentMode === 'single' && imgALoaded) {
-            imgBLoaded = false;
-            buildColorImageB(function() {
-                imgBLoaded = true;
-                render();
-            });
+    document.getElementById('bgColor').oninput = function() {
+        document.getElementById('bgColorHex').textContent = this.value;
+        document.getElementById('thumb-single-color').style.background = this.value;
+        if (currentMediaMode === 'single' && imgALoaded) {
+            buildColorImageB(() => render());
         }
     };
 
-    function updateColorThumb() {
-        document.getElementById('thumb-single-color').style.background = bgColorInput.value;
-    }
-    updateColorThumb();
-
     function buildColorImageB(cb) {
-        const w = imgA.naturalWidth  || 800;
-        const h = imgA.naturalHeight || 800;
-        const tmp  = document.createElement('canvas');
-        tmp.width  = w; tmp.height = h;
+        const w = imgA.naturalWidth || 800, h = imgA.naturalHeight || 800;
+        const tmp = document.createElement('canvas');
+        tmp.width = w; tmp.height = h;
         const tCtx = tmp.getContext('2d');
-        tCtx.fillStyle = bgColorInput.value;
+        tCtx.fillStyle = document.getElementById('bgColor').value;
         tCtx.fillRect(0, 0, w, h);
-        imgB.onload = function() { if (cb) cb(); };
+        imgB.onload = () => { if(cb) cb(); };
         imgB.src = tmp.toDataURL();
     }
 
@@ -450,125 +486,185 @@
     }
 
     function onBothLoaded() {
-        clearCellStates();
+        needsGridUpdate = true;
         swapSelected = null;
         clearOverlay();
         render();
     }
 
-    // ── 控件监听 ──────────────────────────────────────────
-    [colsInput, rowsInput, enableDepth, bwInput, htInput, pxInput].forEach(function(el) {
-        el.oninput = function() {
-            document.getElementById('val-cols').innerText = colsInput.value;
-            document.getElementById('val-rows').innerText = rowsInput.value;
-            document.getElementById('val-bw').innerText   = bwInput.value  + '%';
-            document.getElementById('val-ht').innerText   = htInput.value  + '%';
-            document.getElementById('val-px').innerText   = pxInput.value  + '%';
-            clearCellStates();
-            swapSelected = null;
-            clearOverlay();
-            render();
-        };
-    });
+    // ── 交互监听 ──────────────────────────────────────────
+    [colsInput, rowsInput].forEach(el => el.addEventListener('input', function() {
+        document.getElementById('val-' + this.id).innerText = this.value;
+        needsGridUpdate = true;
+        swapSelected = null;
+        clearOverlay();
+        render();
+    }));
 
-    // ── 交换开关 ──────────────────────────────────────────
-    enableSwap.onchange = function() {
-        updateSwapUI();
-        if (!enableSwap.checked) {
-            swapSelected = null;
-            clearOverlay();
+    // 统一 UI Label 更新
+    [depthInput, bwInput, htInput, pxInput, layoutScale, layoutPanX, layoutPanY, layoutColor].forEach(el => el.addEventListener('input', function() {
+        let labelId = 'val-' + this.id.replace('Strength','').replace('layout','').toLowerCase();
+        let labelEl = document.getElementById(labelId);
+        if(labelEl) {
+            labelEl.innerText = this.id.includes('Scale') ? this.value + '%' : this.value;
         }
+        render();
+    }));
+
+    enableLayout.onchange = function() {
+        layoutControls.style.display = this.checked ? 'block' : 'none';
+        render();
     };
 
-    function canSwap() {
-        return parseInt(colsInput.value) >= 2 && parseInt(rowsInput.value) >= 2;
-    }
-    function isSwapActive() {
-        return enableSwap.checked && canSwap() && isReady();
-    }
-    function updateSwapUI() {
-        const active = enableSwap.checked && canSwap();
-        document.getElementById('swap-hint').style.display = active ? 'block' : 'none';
-        canvas.style.cursor = isSwapActive() ? 'crosshair' : 'default';
-    }
+    enableSwap.onchange = function() {
+        document.getElementById('swap-hint').style.display = (this.checked && isReady()) ? 'block' : 'none';
+        if (!this.checked) { swapSelected = null; clearOverlay(); }
+        canvas.style.cursor = (this.checked && isReady()) ? 'crosshair' : 'default';
+    };
 
-    // ── 格子状态 ──────────────────────────────────────────
-    function clearCellStates() {
+    // ── 核心：网格生成与几何相交 ──────────────────────────────
+    function updateGridGeometry(W, H) {
         const cols = parseInt(colsInput.value);
         const rows = parseInt(rowsInput.value);
-        cellStates = [];
-        for (var r = 0; r < rows; r++) {
-            cellStates[r] = [];
-            for (var c = 0; c < cols; c++) {
-                cellStates[r][c] = (r + c) % 2 === 0 ? 0 : 1;
+        
+        if (cellStates.length !== rows || !cellStates[0] || cellStates[0].length !== cols) {
+            cellStates = [];
+            for (let r = 0; r < rows; r++) {
+                cellStates[r] = [];
+                for (let c = 0; c < cols; c++) {
+                    cellStates[r][c] = (r + c) % 2 === 0 ? 0 : 1;
+                }
             }
         }
+
+        gridPoints = [];
+        let topX = [], bottomX = [], leftY = [], rightY = [];
+
+        if (currentGridMode === 'standard') {
+            for(let c=0; c<=cols; c++) { topX[c] = c*(W/cols); bottomX[c] = c*(W/cols); }
+            for(let r=0; r<=rows; r++) { leftY[r] = r*(H/rows); rightY[r] = r*(H/rows); }
+        } else {
+            let jitterX = (W/cols) * 0.45;
+            let jitterY = (H/rows) * 0.45;
+            for(let c=0; c<=cols; c++) {
+                if(c===0) { topX[c]=0; bottomX[c]=0; }
+                else if(c===cols) { topX[c]=W; bottomX[c]=W; }
+                else {
+                    topX[c] = c*(W/cols) + (Math.random()*2-1)*jitterX;
+                    bottomX[c] = c*(W/cols) + (Math.random()*2-1)*jitterX;
+                }
+            }
+            for(let r=0; r<=rows; r++) {
+                if(r===0) { leftY[r]=0; rightY[r]=0; }
+                else if(r===rows) { leftY[r]=H; rightY[r]=H; }
+                else {
+                    leftY[r] = r*(H/rows) + (Math.random()*2-1)*jitterY;
+                    rightY[r] = r*(H/rows) + (Math.random()*2-1)*jitterY;
+                }
+            }
+        }
+
+        for(let r=0; r<=rows; r++) {
+            gridPoints[r] = [];
+            for(let c=0; c<=cols; c++) {
+                let x1 = topX[c], y1 = 0, x2 = bottomX[c], y2 = H;
+                let x3 = 0, y3 = leftY[r], x4 = W, y4 = rightY[r];
+                let D = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
+                if (D === 0) {
+                    gridPoints[r][c] = {x: x1, y: y3}; 
+                } else {
+                    let t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4))/D;
+                    gridPoints[r][c] = { x: x1 + t*(x2-x1), y: y1 + t*(y2-y1) };
+                }
+            }
+        }
+        needsGridUpdate = false;
     }
 
-    // ── Canvas 点击 ───────────────────────────────────────
+    // ── 画布点击与逆向射线测试 ────────────────────────────────
     canvas.addEventListener('click', function(e) {
-        if (!isSwapActive()) return;
+        if (!enableSwap.checked || !isReady()) return;
 
-        var rect   = canvas.getBoundingClientRect();
-        var scaleX = canvas.width  / rect.width;
+        var rect = canvas.getBoundingClientRect();
+        var scaleX = canvas.width / rect.width;
         var scaleY = canvas.height / rect.height;
         var mx = (e.clientX - rect.left) * scaleX;
         var my = (e.clientY - rect.top)  * scaleY;
 
-        var cols  = parseInt(colsInput.value);
-        var rows  = parseInt(rowsInput.value);
-        var cellW = canvas.width  / cols;
-        var cellH = canvas.height / rows;
-        var c = Math.floor(mx / cellW);
-        var r = Math.floor(my / cellH);
-        if (r < 0 || r >= rows || c < 0 || c >= cols) return;
+        if (enableLayout.checked) {
+            let sc = parseInt(layoutScale.value) / 100;
+            let px = parseInt(layoutPanX.value);
+            let py = parseInt(layoutPanY.value);
+            mx = (mx - (canvas.width/2 + px)) / sc + canvas.width/2;
+            my = (my - (canvas.height/2 + py)) / sc + canvas.height/2;
+        }
+
+        let clickedR = -1, clickedC = -1;
+        const rows = parseInt(rowsInput.value);
+        const cols = parseInt(colsInput.value);
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                let poly = [ gridPoints[r][c], gridPoints[r][c+1], gridPoints[r+1][c+1], gridPoints[r+1][c] ];
+                let inside = false;
+                for (let i = 0, j = 3; i < 4; j = i++) {
+                    let xi = poly[i].x, yi = poly[i].y;
+                    let xj = poly[j].x, yj = poly[j].y;
+                    if (((yi > my) != (yj > my)) && (mx < (xj - xi) * (my - yi) / (yj - yi) + xi)) inside = !inside;
+                }
+                if (inside) { clickedR = r; clickedC = c; break; }
+            }
+            if (clickedR !== -1) break;
+        }
+
+        if (clickedR === -1) return; 
 
         if (!swapSelected) {
-            swapSelected = { r: r, c: c };
+            swapSelected = { r: clickedR, c: clickedC };
             drawOverlay();
-        } else if (swapSelected.r === r && swapSelected.c === c) {
+        } else if (swapSelected.r === clickedR && swapSelected.c === clickedC) {
             swapSelected = null;
             clearOverlay();
         } else {
-            var tmp = cellStates[swapSelected.r][swapSelected.c];
-            cellStates[swapSelected.r][swapSelected.c] = cellStates[r][c];
-            cellStates[r][c] = tmp;
+            let tmp = cellStates[swapSelected.r][swapSelected.c];
+            cellStates[swapSelected.r][swapSelected.c] = cellStates[clickedR][clickedC];
+            cellStates[clickedR][clickedC] = tmp;
             swapSelected = null;
             clearOverlay();
             render();
         }
     });
 
-    canvas.addEventListener('mousemove', function() {
-        canvas.style.cursor = isSwapActive() ? 'crosshair' : 'default';
-    });
-
-    // ── SVG Overlay（pointer-events:none，绝不拦截点击）────
     function drawOverlay() {
         clearOverlay();
         if (!swapSelected) return;
 
-        var canvasRect    = canvas.getBoundingClientRect();
-        var containerRect = document.getElementById('preview-container').getBoundingClientRect();
-        var cols  = parseInt(colsInput.value);
-        var rows  = parseInt(rowsInput.value);
-        var dispCellW = canvasRect.width  / cols;
-        var dispCellH = canvasRect.height / rows;
+        let r = swapSelected.r, c = swapSelected.c;
+        let poly = [ gridPoints[r][c], gridPoints[r][c+1], gridPoints[r+1][c+1], gridPoints[r+1][c] ];
 
-        // 相对于 preview-container 的偏移
+        var canvasRect = canvas.getBoundingClientRect();
+        var containerRect = document.getElementById('preview-container').getBoundingClientRect();
         var offX = canvasRect.left - containerRect.left;
         var offY = canvasRect.top  - containerRect.top;
-        var x = offX + swapSelected.c * dispCellW;
-        var y = offY + swapSelected.r * dispCellH;
+        var scaleX = canvasRect.width / canvas.width;
+        var scaleY = canvasRect.height / canvas.height;
 
-        var el = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        el.setAttribute('x',            x + 1.5);
-        el.setAttribute('y',            y + 1.5);
-        el.setAttribute('width',        dispCellW - 3);
-        el.setAttribute('height',       dispCellH - 3);
-        el.setAttribute('fill',         'rgba(255,140,0,0.18)');
-        el.setAttribute('stroke',       'rgba(255,165,0,0.95)');
-        el.setAttribute('stroke-width', '1.5');
+        let el = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        let ptsStr = poly.map(pt => {
+            let x = pt.x, y = pt.y;
+            if (enableLayout.checked) {
+                let sc = parseInt(layoutScale.value) / 100;
+                let px = parseInt(layoutPanX.value), py = parseInt(layoutPanY.value);
+                x = (x - canvas.width/2) * sc + canvas.width/2 + px;
+                y = (y - canvas.height/2) * sc + canvas.height/2 + py;
+            }
+            return `${offX + x * scaleX},${offY + y * scaleY}`;
+        }).join(" ");
+        
+        el.setAttribute('points', ptsStr);
+        el.setAttribute('fill', 'rgba(255,140,0,0.25)');
+        el.setAttribute('stroke', 'rgba(255,165,0,0.95)');
+        el.setAttribute('stroke-width', '2');
         overlaySvg.appendChild(el);
     }
 
@@ -576,94 +672,110 @@
         while (overlaySvg.firstChild) overlaySvg.removeChild(overlaySvg.firstChild);
     }
 
-    // ── 主渲染 ────────────────────────────────────────────
+    // ── 主渲染双层管线 (解耦滤镜与背景) ────────────────────────
     function render() {
         if (!isReady()) return;
-
-        var natW = imgA.naturalWidth;
-        var natH = imgA.naturalHeight;
-        if (!natW || !natH) return;   // 图片尚未真正加载完毕，跳过
+        var natW = imgA.naturalWidth, natH = imgA.naturalHeight;
+        if (!natW || !natH) return;
 
         var W = 1000;
-        canvas.width  = W;
+        canvas.width = W;
         canvas.height = Math.round(W * natH / natW);
 
-        var cols  = parseInt(colsInput.value);
-        var rows  = parseInt(rowsInput.value);
-        var cellW = canvas.width  / cols;
-        var cellH = canvas.height / rows;
+        if (needsGridUpdate) updateGridGeometry(canvas.width, canvas.height);
 
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const cols = parseInt(colsInput.value);
+        const rows = parseInt(rowsInput.value);
 
-        // cellStates 尺寸不符时重建
-        if (cellStates.length !== rows || !cellStates[0] || cellStates[0].length !== cols) {
-            clearCellStates();
-        }
+        var offCanvas = document.createElement('canvas');
+        offCanvas.width = canvas.width;
+        offCanvas.height = canvas.height;
+        var oCtx = offCanvas.getContext('2d', { willReadFrequently: true });
 
-        for (var r = 0; r < rows; r++) {
-            for (var c = 0; c < cols; c++) {
-                var isA = cellStates[r][c] === 0;
-                var src = isA ? imgA : imgB;
-                var sW  = src.naturalWidth;
-                var sH  = src.naturalHeight;
-                if (!sW || !sH) continue;    // 防止除零/黑块
-                var sx  = c * (sW / cols);
-                var sy  = r * (sH / rows);
-                var sw  = sW / cols;
-                var sh  = sH / rows;
-                var dx  = c * cellW;
-                var dy  = r * cellH;
+        oCtx.fillStyle = '#000';
+        oCtx.fillRect(0, 0, offCanvas.width, offCanvas.height);
 
-                ctx.drawImage(src, sx, sy, sw, sh, dx, dy, cellW + 0.5, cellH + 0.5);
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                let isA = cellStates[r][c] === 0;
+                let src = isA ? imgA : imgB;
+                let poly = [ gridPoints[r][c], gridPoints[r][c+1], gridPoints[r+1][c+1], gridPoints[r+1][c] ];
+
+                oCtx.save();
+                oCtx.beginPath();
+                oCtx.moveTo(poly[0].x, poly[0].y);
+                oCtx.lineTo(poly[1].x, poly[1].y);
+                oCtx.lineTo(poly[2].x, poly[2].y);
+                oCtx.lineTo(poly[3].x, poly[3].y);
+                oCtx.closePath();
+                
+                oCtx.lineWidth = 1; 
+                oCtx.strokeStyle = isA ? "rgba(0,0,0,0.01)" : "rgba(255,255,255,0.01)";
+                oCtx.stroke();
+
+                oCtx.clip();
+                oCtx.drawImage(src, 0, 0, offCanvas.width, offCanvas.height);
+                oCtx.restore();
             }
         }
 
-        // ── 缝隙阴影：在所有格子绘制完后统一叠加渐变投影 ──
-        if (enableDepth.checked) {
-            var shadowW = Math.max(3, Math.round(Math.min(cellW, cellH) * 0.10)); // 投影宽度，随格子大小自适应
-            // 竖向缝隙（列之间）
-            for (var ci = 1; ci < cols; ci++) {
-                var cx = ci * cellW;
-                // 左侧格子右边缘：从透明→暗（向右渐变）
-                var gL = ctx.createLinearGradient(cx - shadowW, 0, cx, 0);
-                gL.addColorStop(0, 'rgba(0,0,0,0)');
-                gL.addColorStop(1, 'rgba(0,0,0,0.32)');
-                ctx.fillStyle = gL;
-                ctx.fillRect(cx - shadowW, 0, shadowW, canvas.height);
-                // 右侧格子左边缘：从暗→透明（向右渐变，高光）
-                var gR = ctx.createLinearGradient(cx, 0, cx + shadowW, 0);
-                gR.addColorStop(0, 'rgba(255,255,255,0.12)');
-                gR.addColorStop(1, 'rgba(255,255,255,0)');
-                ctx.fillStyle = gR;
-                ctx.fillRect(cx, 0, shadowW, canvas.height);
+        // ── 将 UI 的 0-100 平滑映射到 0-0.1 的物理权重 ──
+        // 这样滑块在 100 时效果等同于之前的 10，滑块在 50 时效果等同于之前的 5
+        let shadowVal = (parseInt(depthInput.value) / 100) * 0.1; 
+        
+        if (shadowVal > 0) {
+            oCtx.lineWidth = Math.max(1, offCanvas.width / 400);
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    let isA = cellStates[r][c] === 0;
+                    let p1 = gridPoints[r][c], p2 = gridPoints[r][c+1];
+                    let p3 = gridPoints[r+1][c+1], p4 = gridPoints[r+1][c];
+
+                    oCtx.shadowColor = `rgba(0,0,0,${shadowVal * 1.5})`;
+                    oCtx.shadowBlur = 80 * shadowVal; // 调整模糊度比例以匹配原版视觉
+                    oCtx.strokeStyle = `rgba(0,0,0,${shadowVal})`;
+
+                    oCtx.beginPath();
+                    if (isA) { 
+                        oCtx.moveTo(p1.x, p1.y); oCtx.lineTo(p4.x, p4.y);
+                        oCtx.moveTo(p2.x, p2.y); oCtx.lineTo(p3.x, p3.y);
+                    } else {   
+                        oCtx.moveTo(p1.x, p1.y); oCtx.lineTo(p2.x, p2.y);
+                        oCtx.moveTo(p4.x, p4.y); oCtx.lineTo(p3.x, p3.y);
+                    }
+                    oCtx.stroke();
+                }
             }
-            // 横向缝隙（行之间）
-            for (var ri = 1; ri < rows; ri++) {
-                var ry = ri * cellH;
-                // 上方格子下边缘：从透明→暗（向下渐变）
-                var gT = ctx.createLinearGradient(0, ry - shadowW, 0, ry);
-                gT.addColorStop(0, 'rgba(0,0,0,0)');
-                gT.addColorStop(1, 'rgba(0,0,0,0.32)');
-                ctx.fillStyle = gT;
-                ctx.fillRect(0, ry - shadowW, canvas.width, shadowW);
-                // 下方格子上边缘：从暗→透明（高光）
-                var gB = ctx.createLinearGradient(0, ry, 0, ry + shadowW);
-                gB.addColorStop(0, 'rgba(255,255,255,0.12)');
-                gB.addColorStop(1, 'rgba(255,255,255,0)');
-                ctx.fillStyle = gB;
-                ctx.fillRect(0, ry, canvas.width, shadowW);
-            }
+            oCtx.shadowBlur = 0; 
         }
 
-        applyCombinedFilters();
+        applyFilters(oCtx, offCanvas);
 
-        // 重绘 overlay（canvas 显示位置可能因尺寸变化而移动）
-        if (swapSelected && isSwapActive()) drawOverlay();
+        if (enableLayout.checked) {
+            ctx.fillStyle = layoutColor.value;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        ctx.save();
+        if (enableLayout.checked) {
+            let sc = parseInt(layoutScale.value) / 100;
+            let px = parseInt(layoutPanX.value);
+            let py = parseInt(layoutPanY.value);
+            ctx.translate(canvas.width/2 + px, canvas.height/2 + py);
+            ctx.scale(sc, sc);
+            ctx.translate(-canvas.width/2, -canvas.height/2);
+        }
+
+        ctx.drawImage(offCanvas, 0, 0);
+        ctx.restore();
+
+        if (swapSelected && enableSwap.checked) drawOverlay();
     }
 
-    // ── 滤镜 ──────────────────────────────────────────────
-    function applyCombinedFilters() {
+    // ── 滤镜 (仅针对传入的 Canvas 对象) ─────────────────────────
+    function applyFilters(targetCtx, targetCanvas) {
         var bwS = parseInt(bwInput.value) / 100;
         var htS = parseInt(htInput.value) / 100;
         var pxS = parseInt(pxInput.value) / 100;
@@ -671,33 +783,33 @@
         if (pxS > 0) {
             var tmp   = document.createElement('canvas');
             var scale = Math.max(0.05, 1 - pxS * 0.95);
-            tmp.width  = Math.max(1, Math.round(canvas.width  * scale));
-            tmp.height = Math.max(1, Math.round(canvas.height * scale));
-            tmp.getContext('2d').drawImage(canvas, 0, 0, tmp.width, tmp.height);
-            ctx.filter = 'blur(' + (pxS * 10) + 'px)';
-            ctx.drawImage(tmp, 0, 0, tmp.width, tmp.height, 0, 0, canvas.width, canvas.height);
-            ctx.filter = 'none';
+            tmp.width  = Math.max(1, Math.round(targetCanvas.width  * scale));
+            tmp.height = Math.max(1, Math.round(targetCanvas.height * scale));
+            tmp.getContext('2d').drawImage(targetCanvas, 0, 0, tmp.width, tmp.height);
+            targetCtx.filter = 'blur(' + (pxS * 10) + 'px)';
+            targetCtx.drawImage(tmp, 0, 0, tmp.width, tmp.height, 0, 0, targetCanvas.width, targetCanvas.height);
+            targetCtx.filter = 'none';
         }
 
-        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var imageData = targetCtx.getImageData(0, 0, targetCanvas.width, targetCanvas.height);
         var data = imageData.data;
 
         if (htS > 0) {
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            targetCtx.fillStyle = '#fff';
+            targetCtx.fillRect(0, 0, targetCanvas.width, targetCanvas.height);
             var step = Math.floor(5 + (1 - htS) * 12);
-            for (var y = 0; y < canvas.height; y += step) {
-                for (var x = 0; x < canvas.width; x += step) {
-                    var i = (y * canvas.width + x) * 4;
+            for (var y = 0; y < targetCanvas.height; y += step) {
+                for (var x = 0; x < targetCanvas.width; x += step) {
+                    var i = (y * targetCanvas.width + x) * 4;
                     var gray = (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114) / 255;
                     var radius = (step / 2) * (1 - gray) * 1.3;
-                    ctx.fillStyle = '#000';
-                    ctx.beginPath();
-                    ctx.arc(x, y, radius, 0, Math.PI * 2);
-                    ctx.fill();
+                    targetCtx.fillStyle = '#000';
+                    targetCtx.beginPath();
+                    targetCtx.arc(x, y, radius, 0, Math.PI * 2);
+                    targetCtx.fill();
                 }
             }
-            imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            imageData = targetCtx.getImageData(0, 0, targetCanvas.width, targetCanvas.height);
             data = imageData.data;
         }
 
@@ -710,15 +822,15 @@
                 data[i+1] = g2 * (1 - bwS) + gr * bwS;
                 data[i+2] = b2 * (1 - bwS) + gr * bwS;
             }
-            ctx.putImageData(imageData, 0, 0);
+            targetCtx.putImageData(imageData, 0, 0);
         }
     }
 
     // ── 导出 ──────────────────────────────────────────────
-    downloadBtn.onclick = function() {
+    document.getElementById('downloadBtn').onclick = function() {
         var link = document.createElement('a');
-        link.download = 'woven_art_black.png';
-        link.href = canvas.toDataURL('image/png');
+        link.download = 'woven_art_collage.png';
+        link.href = canvas.toDataURL('image/png', 1.0);
         link.click();
     };
 </script>
